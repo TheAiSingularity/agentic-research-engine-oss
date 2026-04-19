@@ -1,5 +1,17 @@
 # Progress Journal
 
+## 2026-04-20 (evening) — Wave 2 Tier 2 shipped
+
+- **`research-assistant/production/` tier live**: HyDE (gated on numeric queries) + Chain-of-Verification + iterative retrieval (bounded by `MAX_ITERATIONS`) + optional self-consistency. LangGraph with a conditional edge from `verify` back to `search`. 220-line `main.py`.
+- New env-var contract on top of beginner's: `ENABLE_HYDE`, `ENABLE_VERIFY`, `MAX_ITERATIONS`, `ENABLE_CONSISTENCY`, `CONSISTENCY_SAMPLES`, `MODEL_VERIFIER`. Each technique can be flipped independently for ablations.
+- 12 mocked unit tests added for the new nodes + conditional iteration + grounding ranking. Test suite total: **47/47 green**.
+- Fixed a subtle pytest-pain-point: both `beginner/` and `production/` have `main.py`, and tests used to `import main` — sys.path / sys.modules collision. Resolved via explicit `importlib.util.spec_from_file_location` loads in each test file. Root-level `pyproject.toml` sets `--import-mode=importlib` for pytest discovery.
+- **Live Mac smoke** on `gemma4:e2b` + `nomic-embed-text` + SearXNG: **72s end-to-end** (vs beginner's 40s). CoVe parsed 6 claims, all 6 verified → no iteration triggered. Answer is generic but well-grounded. Observed effect: HyDE pulled more generic RAG descriptions than beginner's direct search — on stronger models this likely inverts; documented for Tier 3 ablation.
+- Production `requirements.txt` adds `sentence-transformers>=3.0.0` for the forthcoming cross-encoder rerank layer (already available in `core/rag/CrossEncoderReranker`, lazy-loaded).
+- `beginner/techniques.md` now points readers at production for the adaptive-verification upgrade path.
+- **DEC-007 extended**: documents the gated / bounded / opt-in nature of each technique — compute scales with difficulty, not uniformly.
+- **Next (Wave 2 Tier 3):** SimpleQA-100 + BrowseComp-Plus-50 eval subsets, ablation runner, Pareto plot, blog + arXiv draft. Plus the Rust MCP search-tool case study recipe (approved in plan).
+
 ## 2026-04-20 — Wave 2 Tier 1 shipped
 
 - **core/rag v1** landed: `HybridRetriever` (BM25 + dense + RRF), `CrossEncoderReranker` (lazy-loaded `BAAI/bge-reranker-v2-m3`), `contextualize_chunks` (Anthropic contextual retrieval). Public API stable: `core.rag.{Retriever, HybridRetriever, CrossEncoderReranker, contextualize_chunks, make_openai_llm}`. v0 `Retriever` kept for reproducibility / ablation baseline.

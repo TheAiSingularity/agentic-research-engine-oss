@@ -106,6 +106,22 @@ multiple times (different sub-queries, same canonical source). The
 search node dedupes by URL before retrieval runs, so top-k isn't
 wasted on duplicates. Pure post-processing, zero LLM cost.
 
+## Going further — production tier
+
+The beginner tier stops at one-shot synthesis. For multi-hop questions
+where a single pass fabricates or under-supports claims, see the
+[production tier](../production/README.md) which adds:
+
+- **HyDE** query rewriting (gated against numeric queries)
+- **Chain-of-Verification** — claim-by-claim verification against evidence
+- **Iterative retrieval** — re-search for unverified claims only
+- **Self-consistency voting** (opt-in) — sample N synthesis candidates,
+  pick the best by citation grounding
+
+These are the MiroThinker-H1 architectural wins (88.2 BrowseComp vs
+74.0 for single-pass MiroThinker-1.7) applied on top of any
+OpenAI-compatible backend.
+
 ## What nobody tells you
 
 **The cheapest agent in 2026 is one that runs on your own GPU.**

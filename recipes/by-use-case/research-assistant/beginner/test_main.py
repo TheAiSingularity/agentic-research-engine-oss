@@ -16,9 +16,16 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(Path(__file__).parent))
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
+
+# Load THIS recipe's main.py by path, bypassing sys.path / sys.modules
+# so the other recipe (production/main.py) can't shadow it.
+import importlib.util  # noqa: E402
+
+_spec = importlib.util.spec_from_file_location("beginner_main", Path(__file__).parent / "main.py")
+main = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(main)
 
 
 def _chat_resp(text: str) -> object:
@@ -33,7 +40,7 @@ def _searxng_json(hits: list[tuple[str, str, str]]) -> dict:
 @pytest.fixture
 def patched(monkeypatch):
     """Patch OpenAI client (routed by prompt content) and SearXNG HTTP."""
-    import main
+    pass  # main loaded at module top via importlib
 
     def chat_router(*args, **kwargs):
         prompt = kwargs.get("messages", [{}])[0].get("content", "")
@@ -86,14 +93,14 @@ def patched(monkeypatch):
 
 
 def test_plan_parses_subqueries(patched):
-    import main
+    pass  # main loaded at module top via importlib
 
     result = main._plan({"question": "q", "subqueries": [], "evidence": [], "answer": ""})
     assert result["subqueries"] == ["sub one", "sub two", "sub three"]
 
 
 def test_searxng_hits_parsed(patched):
-    import main
+    pass  # main loaded at module top via importlib
 
     hits = main._searxng("anything")
     assert len(hits) == 2
@@ -103,7 +110,7 @@ def test_searxng_hits_parsed(patched):
 
 def test_search_collects_summaries(patched):
     state = {"question": "q", "subqueries": ["s1", "s2"], "evidence": [], "answer": ""}
-    import main
+    pass  # main loaded at module top via importlib
 
     result = main._search(state)
     # 2 sub-queries × 2 hits each = 4 evidence items. Each text is the summary.
@@ -112,7 +119,7 @@ def test_search_collects_summaries(patched):
 
 
 def test_search_empty_hits(patched, monkeypatch):
-    import main
+    pass  # main loaded at module top via importlib
 
     def empty_get(url, params=None, timeout=None):
         r = mock.MagicMock()
@@ -127,7 +134,7 @@ def test_search_empty_hits(patched, monkeypatch):
 
 
 def test_retrieve_passes_through_when_few_evidence(patched):
-    import main
+    pass  # main loaded at module top via importlib
 
     evidence = [{"url": "u", "title": "t", "text": "short"}]
     state = {"question": "q", "subqueries": [], "evidence": evidence, "answer": ""}
@@ -135,7 +142,7 @@ def test_retrieve_passes_through_when_few_evidence(patched):
 
 
 def test_retrieve_narrows_when_many_evidence(patched, monkeypatch):
-    import main
+    pass  # main loaded at module top via importlib
 
     monkeypatch.setattr(main, "TOP_K_EVIDENCE", 3)
     evidence = [{"url": f"u{i}", "title": f"t{i}", "text": f"text {i}"} for i in range(10)]
@@ -144,14 +151,14 @@ def test_retrieve_narrows_when_many_evidence(patched, monkeypatch):
 
 
 def test_synthesize_returns_answer_string(patched):
-    import main
+    pass  # main loaded at module top via importlib
 
     state = {"question": "q", "subqueries": [], "evidence": [{"url": "u", "title": "t", "text": "snippet"}], "answer": ""}
     assert "Final answer" in main._synthesize(state)["answer"]
 
 
 def test_full_graph_end_to_end(patched):
-    import main
+    pass  # main loaded at module top via importlib
 
     result = main.build_graph().invoke({"question": "test", "subqueries": [], "evidence": [], "answer": ""})
     assert result["subqueries"] == ["sub one", "sub two", "sub three"]

@@ -1,0 +1,6 @@
+langgraph>=0.2.0
+openai>=1.40.0
+requests>=2.32.0
+rank_bm25>=0.2.2
+sentence-transformers>=3.0.0
+pytest>=8.0.0
