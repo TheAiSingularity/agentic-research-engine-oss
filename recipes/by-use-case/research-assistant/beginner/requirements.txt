@@ -1,0 +1,5 @@
+langgraph>=0.2.0
+openai>=1.40.0
+google-genai>=0.3.0
+exa-py>=1.0.0
+pytest>=8.0.0
