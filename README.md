@@ -4,9 +4,9 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/status-wave%202%20tier%204-brightgreen.svg" alt="Status">
-  <img src="https://img.shields.io/badge/recipes-2-green.svg" alt="Recipes">
-  <img src="https://img.shields.io/badge/tests-68%2F68-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/status-wave%203-brightgreen.svg" alt="Status">
+  <img src="https://img.shields.io/badge/recipes-2%20live-green.svg" alt="Recipes">
+  <img src="https://img.shields.io/badge/tests-98%2F98-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/languages-python%20%2B%20rust-green.svg" alt="Languages">
 </p>
 
@@ -30,7 +30,7 @@ OpenResearcher-30B-A3B, see [`docs/how-it-works.md`](docs/how-it-works.md).
 | Recipe | Levels | What it does |
 |---|---|---|
 | [**research-assistant**](recipes/by-use-case/research-assistant/) | `beginner` (100 LOC) · `production` (384 LOC w/ 5 Tier 4 techniques) | Answers hard research questions with cited sources; decomposes → searches → verifies → iterates |
-| [**trading-copilot**](recipes/by-use-case/trading-copilot/) | pending | Market research + alerts (research only — NOT auto-execution) |
+| [**trading-copilot**](recipes/by-use-case/trading-copilot/) | `beginner` + `production` both shipped · `eval` harness with precision/recall backtest | Market research + alerts (NOT auto-execution) on a watchlist + rule set. Cheap analyst + escalated skeptic + CoVe-style claim verification. Slack/Telegram/Discord webhooks or stdout. |
 
 Plus one Rust case-study recipe under `by-pattern/`:
 
@@ -128,8 +128,8 @@ foundations/                 # OpenClaw / OpenShell / NemoClaw / Hermes Agent ex
 
 ## Status
 
-- **Wave 0** skeleton · **Wave 0.5** SOTA-per-task pivot · **Wave 1** beginner recipe live · **Wave 2** tiers 1/2/3/4 — **all shipped.**
-- Pending work is on the user's end: run the full 12-config ablation on the GPU VM with SimpleQA-100 + BrowseComp-Plus-50 to produce the paper's numbers.
+- **Wave 0** skeleton · **Wave 0.5** SOTA-per-task pivot · **Wave 1** research-assistant beginner · **Wave 2** tiers 1/2/3/4 (research-assistant full SOTA stack + ablation harness) · **Wave 3** trading-copilot beginner + production + backtest — **all shipped.**
+- Pending work on the user's end: run the full 12-config ablation on the GPU VM with SimpleQA-100 + BrowseComp-Plus-50 to produce the paper's numbers; run the trading-copilot backtest over longer historical windows for paper-grade precision/recall curves.
 
 ## Related
 

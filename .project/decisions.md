@@ -1,5 +1,11 @@
 # Decisions
 
+## DEC-009 — trading-copilot skips research-assistant's HyDE/FLARE/compression/plan-refinement/router
+**Date:** 2026-04-20
+**Context:** Research-assistant's production tier has 9 techniques across Tiers 2 + 4. Transferring all of them to trading-copilot would add complexity without benefit — many are domain-specific to open-web research.
+**Decision:** Production trading-copilot inherits only the techniques that transfer to structured-data monitoring: **step critic** (T4.1), **self-consistency skeptic** (T2), **CoVe-style alert verification** (T2 equivalent — same principle, different data substrate). HyDE, FLARE, evidence compression, plan refinement, and the classifier router are explicitly skipped with documented reasoning in `production/techniques.md`.
+**Consequences:** Production trading-copilot tier stays ~285 LOC (vs research-assistant's 384). Same "adaptive verification" story, but honestly scoped. Future: revisit compression if `ENABLE_SOCIAL=1` makes news/social feeds balloon.
+
 ## DEC-008 — Drop youtube-analyzer; focus on research-assistant + trading-copilot
 **Date:** 2026-04-20
 **Context:** Three recipes were scoped in Wave 1 (research-assistant, youtube-analyzer, trading-copilot). After Wave 2's deep investment in research-assistant — four tiers of techniques, 68 unit tests, 12-config ablation matrix, full paper draft — youtube-analyzer never got any implementation and added scope confusion. The trading-copilot story (market research + alerts, not execution) is differentiated and has a natural place for the adaptive-verification stack; youtube-analyzer overlapped too much with generic "summarize long video" tooling.

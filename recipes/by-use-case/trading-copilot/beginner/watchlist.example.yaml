@@ -1,0 +1,22 @@
+# trading-copilot — example watchlist + rules.
+#
+# tickers: plain uppercase US symbols. No options, no futures, no OTC.
+# rules:   structured triggers the analyst evaluates per ticker. The
+#          analyst prompt sees this whole list and emits CANDIDATE: lines
+#          for any rule it judges to fire on today's data.
+
+watchlist:
+  - AAPL
+  - NVDA
+  - TSLA
+
+rules:
+  - kind: sma_cross
+    description: "50-day SMA crosses above/below 200-day SMA in recent bars"
+    fast: 50
+    slow: 200
+
+  - kind: rsi_oversold
+    description: "RSI-14 below 30 (classic oversold signal)"
+    window: 14
+    threshold: 30

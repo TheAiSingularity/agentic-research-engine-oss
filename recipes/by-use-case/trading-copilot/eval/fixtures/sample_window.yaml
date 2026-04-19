@@ -1,0 +1,28 @@
+# Sample backtest window — 6 months of 2024 on 3 large-cap tickers.
+# Replay cadence: every 5 trading days.
+# Alert scoring: a ≥3% absolute move within 5 bars is a "meaningful event".
+
+window:
+  start: "2024-01-02"
+  end: "2024-06-28"
+  every_n_days: 5
+
+watchlist:
+  - AAPL
+  - NVDA
+  - TSLA
+
+rules:
+  - kind: sma_cross
+    description: "50-day SMA crosses above/below 200-day SMA in the last 5 bars"
+    fast: 50
+    slow: 200
+
+  - kind: rsi_oversold
+    description: "RSI-14 below 30 (oversold)"
+    window: 14
+    threshold: 30
+
+scoring:
+  threshold_pct: 3.0        # absolute ≥3% move is "meaningful"
+  lookahead_days: 5         # within 5 trading days of the alert's as-of date

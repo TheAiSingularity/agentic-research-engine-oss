@@ -1,5 +1,21 @@
 # Progress Journal
 
+## 2026-04-20 (Wave 3) — trading-copilot recipe end-to-end (beginner + production + eval)
+
+- **Second flagship recipe shipped in one session.** Trading-copilot had only a stub README before; now has beginner tier + production tier + backtest harness, all tested end-to-end.
+- **Beginner tier** (`beginner/main.py`, ~245 LOC): 5-node LangGraph `load_config → gather → analyze → skeptic → alert_router`. Price data via `yfinance` (15-min cache), indicators via `ta`, news via self-hosted SearXNG `&categories=news`, webhook routing via pure `requests.post` (Slack/Telegram/Discord) with stdout fallback. Config is YAML (`watchlist.example.yaml` = AAPL/NVDA/TSLA × {sma_cross, rsi_oversold}).
+- **Production tier** (`production/main.py`, ~285 LOC): layers 4 adaptive-verification techniques onto beginner, all env-toggleable:
+  - **T4.1 step critic** after `gather` and `analyze` (ThinkPRM-style)
+  - **T2 self-consistency skeptic** with adaptive N (N=1 for high-severity short-reasoning candidates, N=CONSISTENCY_SAMPLES otherwise)
+  - **T2 CoVe-style `verify_alerts`** — decomposes each skeptic-approved alert into atomic claims, checks each against raw prices + news, drops the alert if any claim is unsupported
+  - Optional **social layer** via PRAW (Reddit r/wallstreetbets + r/stocks), `ENABLE_SOCIAL=0` opt-in
+  - Skipped (explicitly don't apply to structured-data monitoring): HyDE, FLARE, evidence compression, plan refinement, classifier router — see `production/techniques.md` for reasoning.
+- **Safety rails at build time**: two forbidden-symbols tests (one for main.py, one for requirements.txt) fail the build if anyone adds `place_order`, `submit_order`, `execute_trade`, `alpaca`, `ib_insync`, etc. Permanent enforcement of the "research + alerts, NOT execution" contract.
+- **Eval harness** (`eval/backtest.py`, ~150 LOC): historical replay; for each scan date runs the full pipeline and scores alerts against the next N bars for a ≥X% move. Metrics: signal precision + recall + latency + tokens. Fixtures: `sample_window.yaml` (6 months, 3 tickers) + `smoke_window.yaml` (1 month, 1 ticker — for dev).
+- **Tests: 98/98 green** (68 pre-existing + 15 trading beginner + 15 trading production). All mocked; zero network, zero API keys. Chat router + SearXNG HTTP + yfinance all stubbed per the established per-recipe `importlib.util.spec_from_file_location` pattern.
+- **Live Mac smoke** (Ollama + gemma4:e2b + SearXNG + real yfinance): beginner tier completed in **44 s**, 3 tickers scanned, 0 candidates (AAPL/NVDA/TSLA weren't in textbook oversold and no recent MA crosses — correct behavior, not silent failure). Production smoke pending on this commit.
+- **Root README + recipes/README updated** — tests badge 68→98, trading-copilot status beginner+production shipped, Wave 3 added to status line.
+
 ## 2026-04-20 (cleanup) — Drop youtube-analyzer; refresh stale READMEs
 
 - Deleted `recipes/by-use-case/youtube-analyzer/` entirely. Scope settles on **two** flagship recipes: research-assistant (shipped through Tier 4) + trading-copilot (pending). See DEC-008.

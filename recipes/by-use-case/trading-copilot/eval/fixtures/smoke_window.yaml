@@ -1,0 +1,19 @@
+# Tiny window for dev smoke runs — 1 month, 1 ticker, every 10 days.
+# Produces ~3 scan dates. Full sample_window.yaml is for real evaluation.
+
+window:
+  start: "2024-02-01"
+  end: "2024-02-29"
+  every_n_days: 10
+
+watchlist:
+  - AAPL
+
+rules:
+  - kind: rsi_oversold
+    window: 14
+    threshold: 30
+
+scoring:
+  threshold_pct: 3.0
+  lookahead_days: 5

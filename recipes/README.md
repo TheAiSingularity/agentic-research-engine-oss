@@ -12,7 +12,7 @@ Two indexes:
 | Recipe | Status | What it does |
 |---|---|---|
 | [research-assistant/](by-use-case/research-assistant/) | **beginner + production shipped**, eval harness + 12-config ablation matrix | Deep-research agent: decompose → search → retrieve → synthesize → verify → iterate. Four tiers of SOTA techniques, all env-toggleable. |
-| [trading-copilot/](by-use-case/trading-copilot/) | README + skeleton only | Market research + alerts (NOT auto-execution). Stack pending selection. |
+| [trading-copilot/](by-use-case/trading-copilot/) | **beginner + production shipped**, backtest harness | Market research + alerts on a watchlist + rule set. Cheap analyst + escalated skeptic + CoVe-style claim verification against raw data. Slack/Telegram/Discord webhooks or stdout. Build-time safety test forbids any execution symbol. |
 | [by-pattern/rust-mcp-search-tool/](by-pattern/rust-mcp-search-tool/) | Cargo scaffolded, Dockerfile included | Rust MCP server wrapping SearXNG — ~5 MB binary, 4 ms cold start. Case study in where Rust genuinely wins. |
 
 ## Portable stack — every recipe talks to any OpenAI-compatible endpoint
