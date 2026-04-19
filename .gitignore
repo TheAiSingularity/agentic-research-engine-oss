@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Environment
+.env
+.env.local
+*.env
+
+# Recipe runtime outputs
+recipes/**/outputs/
+recipes/**/*.log
+recipes/**/cache/
+
+# Model weights (don't check in)
+models/
+*.gguf
+*.safetensors
+
+# Node (for any future JS tooling)
+node_modules/

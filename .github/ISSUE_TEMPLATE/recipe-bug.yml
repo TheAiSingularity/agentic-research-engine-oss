@@ -1,0 +1,31 @@
+name: Recipe bug
+description: A recipe doesn't run, produces wrong output, or fails CI
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: recipe-path
+    attributes:
+      label: Recipe path
+      placeholder: recipes/by-use-case/research-assistant/beginner/langgraph
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, what did you expect, what did you see?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python/Rust version, relevant package versions
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      render: shell

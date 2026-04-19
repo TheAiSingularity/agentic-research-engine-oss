@@ -1,0 +1,48 @@
+name: recipe-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Discover and run Python recipes
+        run: |
+          # Placeholder — Wave 1 wires up per-recipe Makefile invocation + timeout
+          echo "Python recipe discovery will land in Wave 1."
+          find recipes -name "requirements.txt" -type f | head -5
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Discover and run Rust recipes
+        run: |
+          # Placeholder — Wave 1 wires up cargo build/test per recipe
+          echo "Rust recipe discovery will land in Wave 1."
+          find recipes core -name "Cargo.toml" -type f | head -5
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff check
+        run: ruff check . --exclude core --exclude recipes || true

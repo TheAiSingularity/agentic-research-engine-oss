@@ -1,0 +1,38 @@
+name: "agentic-ai-cookbook-lab"
+slug: agentic-ai-cookbook-lab
+description: "Clone-and-run agent recipes with side-by-side framework comparisons. 3 flagship recipes × 4 framework implementations each, plus foundation explainers and SOTA RAG in core/. Default sandboxed runtime is HermesClaw."
+status: active
+created: 2026-04-19
+tech_stack:
+  - Python
+  - Rust
+  - LangGraph
+  - CrewAI
+  - LlamaIndex
+  - Pydantic AI
+  - OpenAI Agents SDK
+  - DSPy
+  - HermesClaw
+  - NVIDIA OpenShell
+repository: "https://github.com/TheAiSingularity/agentic-ai-cookbook-lab"
+tags: [ai, agents, recipes, cookbook, tutorial, comparison, langgraph, crewai, rag, mcp]
+goals:
+  - id: G1
+    title: "3 flagship recipes × 4 framework implementations each, shipped and runnable"
+    success_criteria: "research-assistant, youtube-analyzer, trading-copilot all ship 4 framework variants that make run in ≤60s from fresh clone"
+    status: in_progress
+  - id: G2
+    title: "core/rag SOTA retrieval library, used by every recipe that does retrieval"
+    success_criteria: "core/rag v1 (hybrid search + reranking) shipped, benchmarked vs naive, imported by at least one variant of each Wave 1 recipe"
+    status: not_started
+  - id: G3
+    title: "Foundation explainers and comparison pages rank for target search queries"
+    success_criteria: "4 foundation pages and 6 comparison pages live; within 30 days of publish, at least 3 appear in Google top 20 for their target query"
+    status: not_started
+  - id: G4
+    title: "Natural funnel to HermesClaw"
+    success_criteria: "Every production-tier recipe boots a HermesClaw sandbox via core/sandbox helper; comparison pages and foundation pages cross-link HermesClaw where honest"
+    status: not_started
+health:
+  overall: green
+  notes: "Wave 0 skeleton complete. Wave 1 (3 recipes × 4 impls + foundations + core/rag v0) is the next shippable milestone."

@@ -1,0 +1,49 @@
+name: Recipe request
+description: Suggest a new recipe for the cookbook
+title: "[recipe] "
+labels: ["recipe-request"]
+body:
+  - type: input
+    id: recipe-name
+    attributes:
+      label: Recipe name
+      placeholder: e.g. meeting-summarizer
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What does it do?
+      description: One paragraph — the outcome a user gets.
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: Who is it for?
+      description: Who clones this? What problem do they have?
+    validations:
+      required: true
+  - type: checkboxes
+    id: frameworks
+    attributes:
+      label: Framework implementations to include
+      options:
+        - label: vanilla (baseline, no framework)
+        - label: langgraph
+        - label: crewai
+        - label: autogen
+        - label: llamaindex
+        - label: pydantic-ai
+        - label: openai-agents-sdk
+        - label: dspy
+  - type: dropdown
+    id: level
+    attributes:
+      label: Recipe level
+      options:
+        - beginner only
+        - beginner + production
+        - includes rust variant
+    validations:
+      required: true

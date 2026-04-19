@@ -1,0 +1,31 @@
+name: Comparison request
+description: Suggest a new comparison page or an addition to an existing one
+title: "[comparison] "
+labels: ["comparison-request"]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Comparison title
+      placeholder: e.g. LangGraph vs Pydantic AI for structured outputs
+    validations:
+      required: true
+  - type: textarea
+    id: search-query
+    attributes:
+      label: What search query should this rank for?
+      description: The high-intent query a reader would type into Google before landing here.
+    validations:
+      required: true
+  - type: textarea
+    id: items
+    attributes:
+      label: Items being compared
+      description: List the frameworks/tools/protocols being compared.
+    validations:
+      required: true
+  - type: textarea
+    id: dimensions
+    attributes:
+      label: Comparison dimensions
+      description: e.g. code clarity, tokens, latency, cost, accuracy, ecosystem size
