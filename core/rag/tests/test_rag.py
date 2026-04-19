@@ -64,7 +64,7 @@ def test_public_api_exports():
     assert hasattr(rag, "Retriever")
     assert hasattr(rag, "index")
     assert hasattr(rag, "retrieve")
-    assert rag.__version__ == "0.0.1"
+    assert rag.__version__ == "0.1.0"
 
 
 if __name__ == "__main__":

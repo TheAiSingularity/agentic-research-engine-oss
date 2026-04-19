@@ -47,32 +47,41 @@ def patched(monkeypatch):
     client.chat.completions.create.side_effect = chat_router
     monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
 
-    # SearXNG JSON response
+    # SearXNG JSON response — unique URLs per sub-query so dedup doesn't collapse them.
+    call_count = {"n": 0}
+
     def fake_get(url, params=None, timeout=None):
+        call_count["n"] += 1
+        i = call_count["n"]
         r = mock.MagicMock()
         r.status_code = 200
         r.raise_for_status = mock.MagicMock()
         r.json = lambda: _searxng_json([
-            ("https://a.example/1", "Title A", "snippet A"),
-            ("https://b.example/2", "Title B", "snippet B"),
+            (f"https://a.example/{i}-1", f"Title A-{i}", f"snippet A-{i}"),
+            (f"https://b.example/{i}-2", f"Title B-{i}", f"snippet B-{i}"),
         ])
         return r
 
     monkeypatch.setattr(main.requests, "get", fake_get)
 
-    # Stub core/rag embedder.
-    from core.rag import Retriever
+    # Stub embedder on both v0 Retriever and v1 HybridRetriever so no network is hit.
+    from core.rag import HybridRetriever, Retriever
 
     def fake_embed(batch):
         return [[float(len(s)), float(len(s.split()))] for s in batch]
 
-    original_init = Retriever.__init__
+    for cls in (Retriever, HybridRetriever):
+        original_init = cls.__init__
 
-    def patched_init(self, *args, **kwargs):
-        original_init(self, *args, **kwargs)
-        self.embedder = fake_embed
+        def make_patched(orig):
+            def patched_init(self, *args, **kwargs):
+                orig(self, *args, **kwargs)
+                self.embedder = fake_embed
 
-    monkeypatch.setattr(Retriever, "__init__", patched_init)
+            return patched_init
+
+        monkeypatch.setattr(cls, "__init__", make_patched(original_init))
+
     return client
 
 
@@ -88,7 +97,7 @@ def test_searxng_hits_parsed(patched):
 
     hits = main._searxng("anything")
     assert len(hits) == 2
-    assert hits[0]["url"] == "https://a.example/1"
+    assert hits[0]["url"].startswith("https://a.example/")
     assert set(hits[0].keys()) == {"url", "title", "snippet"}
 
 

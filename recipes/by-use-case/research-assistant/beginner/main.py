@@ -14,14 +14,13 @@ from typing import TypedDict
 sys.path.insert(0, str(Path(__file__).resolve().parents[5]))  # let core.rag resolve
 
 import requests  # noqa: E402
-from core.rag import Retriever  # noqa: E402
+from core.rag import HybridRetriever  # noqa: E402
 from langgraph.graph import END, StateGraph  # noqa: E402
 from openai import OpenAI  # noqa: E402
 
 ENV = os.environ.get
-MODEL_PLANNER, MODEL_SEARCHER, MODEL_SYNTHESIZER = ENV("MODEL_PLANNER", "gpt-5-nano"), ENV("MODEL_SEARCHER", "gpt-5-mini"), ENV("MODEL_SYNTHESIZER", "gpt-5-mini")
-NUM_SUBQUERIES, NUM_RESULTS_PER_QUERY, TOP_K_EVIDENCE = int(ENV("NUM_SUBQUERIES", "3")), int(ENV("NUM_RESULTS_PER_QUERY", "5")), int(ENV("TOP_K_EVIDENCE", "8"))
-SEARXNG_URL = ENV("SEARXNG_URL", "http://localhost:8888")
+MODEL_PLANNER, MODEL_SEARCHER, MODEL_SYNTHESIZER = (ENV("MODEL_PLANNER", "gpt-5-nano"), ENV("MODEL_SEARCHER", "gpt-5-mini"), ENV("MODEL_SYNTHESIZER", "gpt-5-mini"))
+NUM_SUBQUERIES, NUM_RESULTS_PER_QUERY, TOP_K_EVIDENCE, SEARXNG_URL = int(ENV("NUM_SUBQUERIES", "3")), int(ENV("NUM_RESULTS_PER_QUERY", "5")), int(ENV("TOP_K_EVIDENCE", "8")), ENV("SEARXNG_URL", "http://localhost:8888")
 
 State = TypedDict("State", {"question": str, "subqueries": list[str], "evidence": list[dict], "answer": str})
 
@@ -59,22 +58,23 @@ def _search_one(sub: str) -> list[dict]:
 
 
 def _search(state: State) -> dict:
-    """Fan-out: search each sub-query in parallel; collect evidence across all."""
+    """Fan-out: parallel search across sub-queries; dedupe evidence by URL."""
     with ThreadPoolExecutor(max_workers=NUM_SUBQUERIES) as pool:
-        results = list(pool.map(_search_one, state["subqueries"]))
-    return {"evidence": [e for items in results for e in items]}
+        items = [e for batch in pool.map(_search_one, state["subqueries"]) for e in batch]
+    seen: set[str] = set()
+    return {"evidence": [e for e in items if e["url"] not in seen and not seen.add(e["url"])]}
 
 
 def _retrieve(state: State) -> dict:
-    """Use core/rag to pick the top-k most relevant evidence for synthesis."""
+    """Use core/rag v1 hybrid (BM25 + dense + RRF) to pick top-k evidence."""
     ev = state["evidence"]
     if len(ev) <= TOP_K_EVIDENCE:
         return {"evidence": ev}
-    r = Retriever()
+    r = HybridRetriever()
     r.add([e["text"] for e in ev])
     top = r.retrieve(state["question"], k=TOP_K_EVIDENCE)
     by_text = {e["text"]: e for e in ev}
-    return {"evidence": [by_text[text] for text, _ in top]}
+    return {"evidence": [by_text[text] for text, _ in top if text in by_text]}
 
 
 def _synthesize(state: State) -> dict:

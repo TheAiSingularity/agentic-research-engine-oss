@@ -1,17 +1,25 @@
-"""core.rag — shared retrieval primitives for agentic-ai-cookbook-lab recipes.
+"""core.rag.python — Python implementation of the shared retrieval primitives.
 
-v0 (Wave 1): naive baseline — OpenAI embeddings + cosine similarity.
-v1 (Wave 2): Anthropic contextual retrieval + BM25 + dense hybrid + cross-encoder rerank.
-
-Public API (stable across versions):
-    Retriever         — simple class wrapping index + retrieve
-    index(docs)       — index a list of strings, returns a Retriever
-    retrieve(query, k, retriever) — retrieve top-k docs for a query
-
-See ../README.md for the full roadmap and graduation criteria.
+Public API (stable):
+    Retriever, index, retrieve                    # v0 — naive dense baseline
+    HybridRetriever, hybrid_index                 # v1 — BM25 + dense + RRF
+    CrossEncoderReranker                          # v1 — second-stage rerank
+    contextualize_chunks                          # v1 — Anthropic contextual chunks
 """
 
+from .contextual import contextualize_chunks, make_openai_llm
+from .hybrid import HybridRetriever, hybrid_index
 from .rag import Retriever, index, retrieve
+from .rerank import CrossEncoderReranker
 
-__all__ = ["Retriever", "index", "retrieve"]
-__version__ = "0.0.1"
+__all__ = [
+    "Retriever",
+    "index",
+    "retrieve",
+    "HybridRetriever",
+    "hybrid_index",
+    "CrossEncoderReranker",
+    "contextualize_chunks",
+    "make_openai_llm",
+]
+__version__ = "0.1.0"

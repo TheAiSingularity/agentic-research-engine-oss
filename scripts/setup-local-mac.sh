@@ -33,13 +33,21 @@ if ! curl -sS http://localhost:11434/api/tags >/dev/null 2>&1; then
 fi
 ok "Ollama ready"
 
-# 2. Pull the model (small — ~7GB, fine for Apple Silicon)
+# 2. Pull the chat model (small — ~7GB, fine for Apple Silicon)
 MODEL="${MODEL:-gemma4:e2b}"
 if ! ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -Fxq "$MODEL"; then
   log "Pulling $MODEL (one-time download, ~7GB)"
   ollama pull "$MODEL"
 fi
 ok "Model $MODEL available"
+
+# 2b. Pull an embedding model — core/rag v1 hybrid retrieval needs dense vectors
+EMBED_MODEL="${EMBED_MODEL:-nomic-embed-text}"
+if ! ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -Fxq "$EMBED_MODEL:latest"; then
+  log "Pulling embedding model $EMBED_MODEL (~274MB)"
+  ollama pull "$EMBED_MODEL"
+fi
+ok "Embedding model $EMBED_MODEL available"
 
 # 3. Docker daemon
 if ! docker info >/dev/null 2>&1; then
@@ -81,6 +89,7 @@ Next steps — run the research-assistant recipe with your local models:
   export MODEL_PLANNER=$MODEL
   export MODEL_SEARCHER=$MODEL
   export MODEL_SYNTHESIZER=$MODEL
+  export EMBED_MODEL=$EMBED_MODEL
   export SEARXNG_URL=http://localhost:8888
 
   make smoke

@@ -33,6 +33,7 @@ export OPENAI_API_KEY=ollama          # Ollama ignores the key, but SDK requires
 export MODEL_PLANNER=gemma4:e2b
 export MODEL_SEARCHER=gemma4:e2b
 export MODEL_SYNTHESIZER=gemma4:e2b
+export EMBED_MODEL=nomic-embed-text   # local embeddings for core/rag v1 hybrid
 export SEARXNG_URL=http://localhost:8888
 
 make smoke
@@ -52,6 +53,7 @@ export OPENAI_API_KEY=vllm
 export MODEL_PLANNER=Qwen/Qwen3.6-35B-A3B
 export MODEL_SEARCHER=Qwen/Qwen3.6-35B-A3B
 export MODEL_SYNTHESIZER=Qwen/Qwen3.6-35B-A3B
+export EMBED_MODEL=BAAI/bge-m3        # serve a separate embedding model alongside
 export SEARXNG_URL=http://localhost:8888
 
 make smoke
@@ -104,6 +106,7 @@ parallel fan-out, SearXNG parsing, and state shape. 13 tests.
 | `MODEL_PLANNER` | `gpt-5-nano` | Small, fast model |
 | `MODEL_SEARCHER` | `gpt-5-mini` | Summarizes search results |
 | `MODEL_SYNTHESIZER` | `gpt-5-mini` | Produces final cited answer |
+| `EMBED_MODEL` | `text-embedding-3-small` | Dense embeddings for `core/rag` v1. Local: `nomic-embed-text` (Ollama) or `BAAI/bge-m3` (vLLM) |
 | `SEARXNG_URL` | `http://localhost:8888` | Your SearXNG instance |
 | `NUM_SUBQUERIES` | `3` | Search fan-out breadth |
 | `NUM_RESULTS_PER_QUERY` | `5` | SearXNG results per sub-query |

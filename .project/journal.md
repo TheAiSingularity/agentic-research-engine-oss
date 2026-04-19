@@ -1,5 +1,20 @@
 # Progress Journal
 
+## 2026-04-20 — Wave 2 Tier 1 shipped
+
+- **core/rag v1** landed: `HybridRetriever` (BM25 + dense + RRF), `CrossEncoderReranker` (lazy-loaded `BAAI/bge-reranker-v2-m3`), `contextualize_chunks` (Anthropic contextual retrieval). Public API stable: `core.rag.{Retriever, HybridRetriever, CrossEncoderReranker, contextualize_chunks, make_openai_llm}`. v0 `Retriever` kept for reproducibility / ablation baseline.
+- **research-assistant/beginner** switched to `HybridRetriever` + evidence dedup by URL in `_search`. `main.py` stays at exactly 100 LOC.
+- **core/rag** now honors `OPENAI_BASE_URL` + `EMBED_MODEL` env vars — works against Ollama (`nomic-embed-text`), vLLM (`BAAI/bge-m3`), or OpenAI (`text-embedding-3-small`).
+- **scorer.py** extended with three new metrics: `citation_accuracy_mean` (catches hallucinated `[N]` refs), `latency_mean_s`, `tokens_est_mean`. 7 pure-function unit tests added.
+- **scripts/setup-vm-gpu.sh** now supports `--engine vllm|sglang` and `--spec-dec` (EAGLE-class speculative decoding). SGLang path is the prefix-caching winner for prefix-heavy RAG workloads (+29% throughput on H100, up to 6.4× on RAG-heavy cases).
+- **scripts/setup-local-mac.sh** also pulls `nomic-embed-text` automatically.
+- **Live Mac smoke test**: 40s end-to-end with `gemma4:e2b` + `nomic-embed-text` + SearXNG + new v1 hybrid retrieval. Factually accurate answer with correct 49% / 67% contextual-retrieval numbers and inline `[N]` citations.
+- **All tests green**: 35/35 (5 rag v0 + 7 hybrid + 4 rerank + 4 contextual + 8 research-assistant + 7 scorer).
+- **DEC-007** logged (Wave 2 enhancement + paper track).
+- **Next (Week 2 of paper plan):** HyDE in `_plan`, Chain-of-Verification node in a new `production/` tier, iterative retrieval loop, self-consistency gated on uncertainty.
+
+
+
 ## 2026-04-19
 - Project created. Name locked: `TheAiSingularity/agentic-ai-cookbook-lab`.
 - Wave 0 skeleton complete locally: directory tree, README, LICENSE, CONTRIBUTING, .gitignore, issue templates (3), CI workflow stubs (Python + Rust matrices), directory READMEs for core/, recipes/, foundations/, comparisons/, skills/, and per-recipe READMEs for the three Wave 1 flagships (research-assistant, youtube-analyzer, trading-copilot).

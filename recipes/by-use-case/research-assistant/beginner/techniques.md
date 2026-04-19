@@ -46,21 +46,31 @@ LLM), and works identically across every backend.
 - [SearXNG project](https://github.com/searxng/searxng)
 - [SearXNG JSON API docs](https://docs.searxng.org/user/search_api.html)
 
-## Retrieval ranking: `core/rag` v0 (cosine), upgrading to hybrid + rerank
+## Retrieval ranking: `core/rag` v1 — hybrid BM25 + dense + RRF
 
-**Why v0 now:** Establishes the API surface recipes will depend on. Naive
-cosine is fine when the evidence set is already query-focused (true here
-— each sub-query's summary is already scoped to that sub-query).
+**Why hybrid:** Sparse (BM25) catches exact tokens, rare strings, and
+numbers that dense embeddings miss. Dense catches paraphrase that BM25
+misses. Reciprocal Rank Fusion (k=60) combines the two rank lists
+without needing score normalization — the SOTA fusion choice in 2026.
 
-**Why v1 next:** SOTA retrieval in 2026 is a two-stage pipeline — hybrid
-(BM25 + dense) with reciprocal-rank-fusion, followed by cross-encoder
-reranking on top-50. Benchmarked at Recall@5 0.816 and MRR@3 0.605,
-outperforming all single-stage methods. Contextual retrieval at indexing
-time reduces retrieval failures by up to 67%.
+**Why two-stage (future, production tier):** Beginner uses hybrid only.
+Production tier layers a cross-encoder reranker on top-50 candidates
+(BAAI/bge-reranker-v2-m3). Benchmarked: Recall@5 0.816, MRR@3 0.605 —
+outperforms every single-stage method. ~25% token reduction on downstream
+synthesis because top-8 is tighter.
 
+**Contextual retrieval (future, at-index-time):** Prepend a 1-2 sentence
+LLM-generated context to each chunk before indexing. Anthropic: **−35%
+retrieval failures from contextual embeddings alone, −49% combined with
+contextual BM25, −67% when also reranked.** Adds one cheap LLM call per
+chunk at ingest; zero cost at query time. Available as
+`core.rag.contextualize_chunks`.
+
+- [core/rag README](../../../../core/rag/README.md) — public API and usage
+- [core/rag BENCHMARKS](../../../../core/rag/BENCHMARKS.md) — live numbers
 - [RAG review 2025–2026 (RAGFlow)](https://ragflow.io/blog/rag-review-2025-from-rag-to-context)
 - [Benchmarking retrieval for financial docs (arXiv)](https://arxiv.org/html/2604.01733)
-- [Advanced RAG patterns 2026 (dev.to)](https://dev.to/young_gao/rag-is-not-dead-advanced-retrieval-patterns-that-actually-work-in-2026-2gbo)
+- [Anthropic contextual retrieval](https://www.anthropic.com/news/contextual-retrieval)
 
 ## LLM routing (three-tier)
 
@@ -88,6 +98,13 @@ SearXNG query + LLM summarization. Serial fan-out of 3 sub-queries is
 ~3× slower than necessary. We parallelize with `ThreadPoolExecutor` (not
 async) because the `openai` SDK's sync client is thread-safe and
 threading is the minimum complexity increment for IO-bound parallelism.
+
+## Evidence dedup by URL
+
+**Why:** Fan-out across N sub-queries frequently surfaces the same URL
+multiple times (different sub-queries, same canonical source). The
+search node dedupes by URL before retrieval runs, so top-k isn't
+wasted on duplicates. Pure post-processing, zero LLM cost.
 
 ## What nobody tells you
 

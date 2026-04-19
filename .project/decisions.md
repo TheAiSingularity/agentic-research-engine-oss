@@ -1,5 +1,19 @@
 # Decisions
 
+## DEC-007 — Wave 2: SOTA enhancement track + research paper
+**Date:** 2026-04-20
+**Context:** The research-assistant recipe works end-to-end locally and on cloud, but isn't SOTA. User wants to push to world-class on speed+accuracy+compute axes and publish. Reference target: MiroThinker-H1 at 88.2 BrowseComp (surpasses Gemini-3.1-Pro and Claude-4.6-Opus). User's rig: 4× RTX 6000 Pro Blackwell, fully self-hosted.
+**Decision:** Ship Wave 2 enhancements in three tiers:
+- **Tier 1 (quality at zero/negative compute cost):** `core/rag` v1 (BM25 + dense + RRF hybrid), cross-encoder reranker (lazy-loaded), contextual chunking helper, evidence dedup in `_search`, citation-grounding validation in scorer, SGLang alternative + EAGLE speculative decoding flags.
+- **Tier 2 (adaptive compute for accuracy):** HyDE planner rewriting, Chain-of-Verification after synthesize, iterative retrieval (ITER-RETGEN), self-consistency gated on uncertainty. Lives in a future `production/` tier.
+- **Tier 3 (infra + paper):** SimpleQA-100 + BrowseComp-Plus-50 harness, Pareto ablation plot, blog post + arXiv tech report.
+**Rust:** keep main pipeline Python (vLLM/SGLang + HF tokenizers are already Rust under the hood). One dedicated Rust artifact — `recipes/by-pattern/rust-mcp-search-tool/` — showcasing 4 ms cold start, 5 MB binary as a case study.
+**Benchmarks:** SimpleQA-100 + BrowseComp-Plus-50.
+**Paper:** Blog post + arXiv TR (no conference deadline).
+**Consequences:** Wave 1 ships the baseline; Wave 2 is where we compete with MiroThinker. Every technique leave-one-out ablated. `core/rag` v0 stays for reproducibility; v1 is the new default via `HybridRetriever`.
+
+
+
 ## DEC-001 — Format: runnable recipe gallery, not tutorial series
 **Date:** 2026-04-19
 **Context:** Initial framing was "tutorial series / handbook" explaining OpenClaw, OpenShell, Hermes Agent, NemoClaw, plus the broader ecosystem. Tested against real GitHub data: pure tutorial / link-list repos plateau at 300–1.3K stars. Runnable-recipe repos (`Shubhamsaboo/awesome-llm-apps`: 106K⭐ / 15% fork-to-star ratio) dominate interaction in this category.

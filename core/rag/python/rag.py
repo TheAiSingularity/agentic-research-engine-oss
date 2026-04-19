@@ -21,14 +21,21 @@ Embedder = Callable[[list[str]], list[list[float]]]
 
 
 def _openai_embedder(batch: list[str]) -> list[list[float]]:
-    """Default embedder: OpenAI text-embedding-3-small.
+    """Default embedder: OpenAI-compatible endpoint.
 
-    Imported lazily so importing `core.rag` doesn't require `openai`
-    installed (useful for tests that mock the embedder).
+    Honors both `OPENAI_BASE_URL` (so it works against Ollama / vLLM /
+    any OpenAI-compatible server) and `EMBED_MODEL` (so you can pick
+    the right model for your backend — e.g., `nomic-embed-text` on
+    Ollama, `text-embedding-3-small` on OpenAI).
+
+    Imported lazily so importing `core.rag` doesn't require `openai`.
     """
     from openai import OpenAI
 
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY", "ollama"),
+        base_url=os.environ.get("OPENAI_BASE_URL"),
+    )
     model = os.getenv("EMBED_MODEL", "text-embedding-3-small")
     resp = client.embeddings.create(model=model, input=batch)
     return [item.embedding for item in resp.data]
