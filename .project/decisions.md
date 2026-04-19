@@ -24,6 +24,16 @@
 **Decision:** Shared `core/` library inside this repo (rag / memory / tools / sandbox). Recipes import from `core/` rather than duplicating. Graduate `core/rag/` into a standalone `TheAiSingularity/agentic-rag` repo when it hits traction criteria (≥1K stars on this repo, ≥20 recipes using it, stable API across 2 waves).
 **Consequences:** Cross-promotion between recipes and core library. Cleaner API via real-usage pressure before spin-out. Later fork is a 2-hour job, not an architectural migration.
 
+## DEC-006 — SOTA-per-task, not framework comparison
+**Date:** 2026-04-19
+**Context:** Wave 0 shipped with recipes advertising 4 framework implementations each for side-by-side comparison. User clarified the real goal: "SOTA cookbooks for respective tasks, not a comparison suite." The framework-comparison angle was my invention, not theirs. The correct model is OpenAI Cookbook / Anthropic Cookbook — one opinionated, state-of-the-art implementation per task.
+**Decision:** Every recipe ships exactly **one** implementation — the SOTA stack for that task, chosen for cheapest-yet-most-accurate. Framework comparison suites are dropped from inside recipes. `comparisons/` keeps its role as standalone landscape pages (SEO-valuable). Every recipe adds `techniques.md` (citations for SOTA choices) and `eval/` (reproducible scorer against gold answers) so the SOTA claim is verifiable.
+**SOTA stacks chosen (April 2026, benchmark-backed):**
+- research-assistant: LangGraph + Exa + `core/rag/` (contextual + hybrid + rerank) + Gemini 3.1 Flash-Lite (→ GPT-5.4 mini for hard reasoning). Expected cost: $0.01–$0.03/query.
+- youtube-analyzer: Pydantic AI + yt-dlp (+ Groq Whisper fallback) + Gemini 3.1 Flash-Lite (1M context). Expected cost: $0.001–$0.02/video.
+- trading-copilot: LangGraph + yfinance + RSS + model routing (Flash-Lite analyst → GPT-5.4 mini skeptic). Expected cost: $0.005–$0.02/cycle.
+**Consequences:** 12 empty framework subdirs deleted from Wave 0 scaffold. Per-recipe README, CONTRIBUTING, root README, recipes/README, and recipe-request issue template all rewritten. Tasks.yaml reset: T3/T4/T5/T6/T7/T8 now scope "SOTA impl + techniques.md + eval harness" per recipe instead of 4-framework port. Comparison pages still ship in Wave 2 — but in `comparisons/`, not inside recipes.
+
 ## DEC-005 — Name: agentic-ai-cookbook-lab
 **Date:** 2026-04-19
 **Context:** Iterated through multiple candidate names. User wanted descriptive, okay-with-collisions, lab vibe. Target form: "agentic AI recipe/cookbook + lab."

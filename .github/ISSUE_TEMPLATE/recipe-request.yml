@@ -1,5 +1,5 @@
 name: Recipe request
-description: Suggest a new recipe for the cookbook
+description: Suggest a new SOTA recipe for the cookbook
 title: "[recipe] "
 labels: ["recipe-request"]
 body:
@@ -24,26 +24,41 @@ body:
       description: Who clones this? What problem do they have?
     validations:
       required: true
-  - type: checkboxes
-    id: frameworks
+  - type: textarea
+    id: sota-stack
     attributes:
-      label: Framework implementations to include
-      options:
-        - label: vanilla (baseline, no framework)
-        - label: langgraph
-        - label: crewai
-        - label: autogen
-        - label: llamaindex
-        - label: pydantic-ai
-        - label: openai-agents-sdk
-        - label: dspy
+      label: Proposed SOTA stack + rationale
+      description: |
+        Which framework, LLM(s), retrieval / data sources, and techniques? Why these and not alternatives?
+        Link the primary sources (benchmarks, pricing pages, papers) backing each choice.
+      placeholder: |
+        - Framework: LangGraph (lowest token overhead per 2026 benchmarks: <link>)
+        - LLM: Gemini 3.1 Flash-Lite default, GPT-5.4 mini for hard reasoning step (routing reduces cost 50–80%)
+        - Retrieval: core/rag hybrid + rerank
+        - Eval: 10 gold answers, factuality + citation precision
+    validations:
+      required: true
+  - type: input
+    id: expected-cost
+    attributes:
+      label: Expected cost per run
+      placeholder: e.g. $0.01–$0.03
+    validations:
+      required: true
   - type: dropdown
     id: level
     attributes:
-      label: Recipe level
+      label: Which levels should this recipe ship?
       options:
         - beginner only
         - beginner + production
         - includes rust variant
+    validations:
+      required: true
+  - type: textarea
+    id: eval
+    attributes:
+      label: Eval plan
+      description: What's the gold-answer dataset and the scoring function?
     validations:
       required: true
