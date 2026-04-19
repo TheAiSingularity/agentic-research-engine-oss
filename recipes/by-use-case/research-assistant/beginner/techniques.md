@@ -13,33 +13,47 @@ repeated chat-history passing that inflates token costs in loop-oriented
 frameworks. Clean fit for `plan → search → retrieve → synthesize`.
 
 - [2026 AI Agent Framework Decision Guide (dev.to)](https://dev.to/linou518/the-2026-ai-agent-framework-decision-guide-langgraph-vs-crewai-vs-pydantic-ai-b2h)
-  — LangGraph achieves the lowest latency and token usage in head-to-head
-  benchmarks.
+  — LangGraph achieves the lowest latency and token usage in head-to-head benchmarks.
 
-## Web search: OpenAI's built-in `web_search` tool (Responses API)
+## Inference: OpenAI-compatible endpoint (portable)
 
-**Why:** Removes the need for a second API key (Exa, Tavily, Brave, etc.).
-The tool is invoked from the model's own reasoning loop — the searcher
-model (gpt-5-mini) decides when to search, issues multiple queries as
-needed, and returns a synthesized answer with URL citations in the
-response's `annotations`.
+**Why:** Every modern LLM server — OpenAI's own API, Ollama, vLLM, Groq,
+Together — exposes the same `/v1/chat/completions` shape. The recipe
+depends only on that interface (via the `openai` Python SDK), so
+switching between paid cloud, on-prem GPU, and Apple-Silicon local
+inference is one env var: `OPENAI_BASE_URL`.
 
-Trade-off: `web_search` is bundled into the LLM call, so you pay both
-the model tokens *and* a per-search fee. Typical runs do 2–4 internal
-searches per call. Cheaper than piecing together Exa + Gemini if you value
-one-key simplicity; possibly more expensive for extremely high volume.
+The local paths use:
+- **Ollama** (macOS / dev) — simplest to run on Apple Silicon; good at mid-size open-weight models
+- **vLLM** (Linux GPU) — highest-throughput open-source inference server; tensor-parallel across multiple GPUs
 
-- [OpenAI Responses API + tools (docs)](https://platform.openai.com/docs/guides/responses)
-- [OpenAI web_search tool reference](https://platform.openai.com/docs/guides/tools-web-search)
+- [Ollama OpenAI-compat docs](https://github.com/ollama/ollama/blob/main/docs/openai.md)
+- [vLLM OpenAI-compat server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
+
+## Web search: SearXNG (self-hosted meta-search)
+
+**Why:** No paid API key. No rate limits you didn't set yourself.
+SearXNG queries DuckDuckGo, Bing, Wikipedia, arXiv, and ~80 other
+engines in parallel and aggregates results. JSON API makes it a drop-in
+replacement for Exa / Tavily / Brave. Running it in Docker on `:8888`
+adds one `docker compose up` to setup.
+
+The recipe's `search` node fetches SearXNG results and then asks the
+searcher LLM to summarize them with inline `[N]` citations. That pattern
+is deterministic, eval-friendly (you can hold search fixed and vary the
+LLM), and works identically across every backend.
+
+- [SearXNG project](https://github.com/searxng/searxng)
+- [SearXNG JSON API docs](https://docs.searxng.org/user/search_api.html)
 
 ## Retrieval ranking: `core/rag` v0 (cosine), upgrading to hybrid + rerank
 
 **Why v0 now:** Establishes the API surface recipes will depend on. Naive
-cosine is fine when your evidence set is already query-focused (which
-happens here — each sub-query's `web_search` response is already scoped).
+cosine is fine when the evidence set is already query-focused (true here
+— each sub-query's summary is already scoped to that sub-query).
 
-**Why v1 next:** SOTA retrieval in 2026 is a two-stage pipeline: hybrid
-(BM25 + dense) with reciprocal-rank-fusion followed by cross-encoder
+**Why v1 next:** SOTA retrieval in 2026 is a two-stage pipeline — hybrid
+(BM25 + dense) with reciprocal-rank-fusion, followed by cross-encoder
 reranking on top-50. Benchmarked at Recall@5 0.816 and MRR@3 0.605,
 outperforming all single-stage methods. Contextual retrieval at indexing
 time reduces retrieval failures by up to 67%.
@@ -48,42 +62,40 @@ time reduces retrieval failures by up to 67%.
 - [Benchmarking retrieval for financial docs (arXiv)](https://arxiv.org/html/2604.01733)
 - [Advanced RAG patterns 2026 (dev.to)](https://dev.to/young_gao/rag-is-not-dead-advanced-retrieval-patterns-that-actually-work-in-2026-2gbo)
 
-## LLM routing: gpt-5-nano for plan, gpt-5-mini for search + synthesize
+## LLM routing (three-tier)
 
-**Why routing:** Sending simple tasks to the cheapest tier and harder ones
-to a more capable model reduces cost 50–80% while maintaining quality.
-The planner just needs to list sub-queries — that's a trivial LLM call,
-and the nano tier handles it fine. Search and synthesis need real
-reasoning, so we route them to mini.
+**Why routing:** Sending simple tasks to a cheap tier and harder tasks
+to a more capable tier reduces cost 50–80% without measurable quality
+loss on the overall workflow.
 
-**Tier availability:** Model names (`gpt-5-nano`, `gpt-5-mini`) are what
-exists on a standard OpenAI account today. Override via
-`MODEL_PLANNER` / `MODEL_SEARCHER` / `MODEL_SYNTHESIZER` env vars when
-newer tiers ship or when you want to dial quality up (e.g., `gpt-5` for
-synthesize on high-stakes questions).
+- **Plan** is one short LLM call producing a list of sub-queries. A
+  nano / 2B-class model handles it fine.
+- **Search** summarizes 5 results per sub-query with citations. Needs
+  reasoning and citation discipline — mid-tier model is the sweet spot.
+- **Synthesize** is the final answer over all kept evidence. Needs the
+  strongest reasoning available — mid-tier or above.
+
+Pick the exact model names via `MODEL_PLANNER` / `MODEL_SEARCHER` /
+`MODEL_SYNTHESIZER`. Defaults match OpenAI SKUs that exist today.
 
 - [Artificial Analysis model leaderboard](https://artificialanalysis.ai/leaderboards/models)
 - [LM Council benchmarks](https://lmcouncil.ai/benchmarks)
-- [BenchLM: Best Budget LLMs 2026](https://benchlm.ai/blog/posts/best-budget-llms-2026)
 
 ## Parallel fan-out
 
-**Why:** The search step runs one call per sub-query, each doing its own
-multi-step web search. Serial fan-out of 3 sub-queries takes ~120–150s.
-We parallelize with `ThreadPoolExecutor` (not async) because the
-`openai` SDK's sync client is thread-safe and threading is the minimum
-complexity increment for IO-bound parallelism.
-
-Parallel fan-out of 3 sub-queries typically runs in 45–70s — roughly
-matching a single search call's own latency (since they overlap).
+**Why:** The search step runs one call per sub-query, each doing a
+SearXNG query + LLM summarization. Serial fan-out of 3 sub-queries is
+~3× slower than necessary. We parallelize with `ThreadPoolExecutor` (not
+async) because the `openai` SDK's sync client is thread-safe and
+threading is the minimum complexity increment for IO-bound parallelism.
 
 ## What nobody tells you
 
-**Getting rid of Exa trades per-token cost for per-search fees.**
-OpenAI's `web_search` tool has a per-call charge on top of token costs.
-For a hobby agent doing dozens of queries a day, that's trivial. For a
-production system serving thousands of queries, the economics may flip —
-at which point swapping back in Exa + Gemini (two cheap APIs) can win on
-marginal cost. The single-key OpenAI-only design is optimized for
-developer experience first, not raw cost ceiling. When you hit scale,
-benchmark both.
+**The cheapest agent in 2026 is one that runs on your own GPU.**
+OpenAI's `web_search` tool, Tavily, Exa — all priced per call. At
+hobby volume they're trivial. At production scale, every per-query fee
+compounds. A vLLM + SearXNG rig on a workstation pays zero marginal
+cost per query after setup. That's the reason this recipe's defaults
+are local-first: we optimize for *zero-marginal-cost* research at the
+edge where agents actually get used — iterative experimentation, eval
+loops, long-running research jobs.

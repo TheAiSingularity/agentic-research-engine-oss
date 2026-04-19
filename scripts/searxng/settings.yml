@@ -1,0 +1,39 @@
+# SearXNG settings for agentic-ai-cookbook-lab
+# JSON format enabled so agent code can parse responses.
+use_default_settings: true
+
+general:
+  instance_name: "agentic-cookbook search"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - html
+    - json
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "placeholder-override-via-SEARXNG_SECRET-env"
+  limiter: false
+  image_proxy: false
+  public_instance: false
+
+ui:
+  static_use_hash: true
+
+# A small, reliable engine set tuned for LLM-agent use.
+# The goal is relevant results, not exhaustiveness.
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: arxiv
+    disabled: false
+  - name: google
+    disabled: true  # requires extra setup; re-enable if you have a SerpAPI key configured

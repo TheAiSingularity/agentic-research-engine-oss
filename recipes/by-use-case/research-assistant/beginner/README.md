@@ -1,76 +1,122 @@
 # research-assistant/beginner
 
-The canonical beginner-tier research assistant. LangGraph wires a 4-node
-pipeline that answers research questions with citations — using a single
-OpenAI key and no Exa / Tavily / Gemini keys.
+Canonical beginner-tier research assistant. LangGraph wires a 4-node
+pipeline that answers research questions with citations. Works with
+OpenAI, Ollama (local), or vLLM (local GPU) — one env var switches
+backends.
 
 ## What it does
 
 Give it a research question — it plans sub-queries, searches the web via
-OpenAI's built-in `web_search` tool, narrows evidence with `core/rag`, and
-synthesizes a cited answer.
+self-hosted SearXNG, narrows evidence with `core/rag`, and synthesizes a
+cited answer.
 
 ```
 plan ──▶ search (parallel) ──▶ retrieve ──▶ synthesize
-(nano)   (mini + web_search)    (core/rag)   (mini)
+(LLM)    (SearXNG → summarize)   (core/rag)   (LLM)
+```
+
+No vendor-specific tool calls. Any OpenAI-compatible endpoint works.
+
+## Backends
+
+### 1. Fully local (Mac, Apple Silicon) — **$0 per query**
+
+```bash
+bash scripts/setup-local-mac.sh   # installs Ollama + pulls gemma4:e2b + starts SearXNG in Docker
+
+cd recipes/by-use-case/research-assistant/beginner
+make install
+
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_API_KEY=ollama          # Ollama ignores the key, but SDK requires one
+export MODEL_PLANNER=gemma4:e2b
+export MODEL_SEARCHER=gemma4:e2b
+export MODEL_SYNTHESIZER=gemma4:e2b
+export SEARXNG_URL=http://localhost:8888
+
+make smoke
+```
+
+### 2. GPU VM (Linux, 4× RTX 6000 Pro Blackwell) — **$0 per query**
+
+```bash
+bash scripts/setup-vm-gpu.sh --model Qwen/Qwen3.6-35B-A3B
+# installs vLLM, pulls the model, spins up SearXNG
+
+cd recipes/by-use-case/research-assistant/beginner
+make install
+
+export OPENAI_BASE_URL=http://localhost:8000/v1
+export OPENAI_API_KEY=vllm
+export MODEL_PLANNER=Qwen/Qwen3.6-35B-A3B
+export MODEL_SEARCHER=Qwen/Qwen3.6-35B-A3B
+export MODEL_SYNTHESIZER=Qwen/Qwen3.6-35B-A3B
+export SEARXNG_URL=http://localhost:8888
+
+make smoke
+```
+
+### 3. OpenAI API (cloud) — pay per query
+
+```bash
+cd scripts/searxng && docker compose up -d   # SearXNG still powers search
+cd -
+
+cd recipes/by-use-case/research-assistant/beginner
+make install
+
+export OPENAI_API_KEY=sk-...
+# OPENAI_BASE_URL unset → defaults to https://api.openai.com/v1
+# Model names left at defaults: gpt-5-nano (plan), gpt-5-mini (search+synth)
+export SEARXNG_URL=http://localhost:8888
+
+make smoke
 ```
 
 ## Stack
 
 | Step | Tool | Why |
 |---|---|---|
-| plan | `gpt-5-nano` | Cheapest OpenAI tier — sub-query generation doesn't need reasoning muscle |
-| search | `gpt-5-mini` + `web_search` tool via Responses API | Model does multi-step web search internally; returns URL-cited snippets. Run in parallel across sub-queries. |
-| retrieve | `core/rag` v0 (OpenAI embeddings + cosine) | Narrows many highlights to top-k most relevant |
-| synthesize | `gpt-5-mini` | Strong reasoning where it matters most — the final cited answer |
+| plan | `MODEL_PLANNER` (default `gpt-5-nano`) | Cheapest / fastest tier — sub-query generation |
+| search | SearXNG + `MODEL_SEARCHER` | Self-hosted meta-search over DuckDuckGo / Bing / Wikipedia / arXiv → LLM summarizes with inline citations |
+| retrieve | `core/rag` v0 (OpenAI-compatible embeddings + cosine) | Narrows many highlights to top-k most relevant |
+| synthesize | `MODEL_SYNTHESIZER` | Strong reasoning where it matters most — the final cited answer |
 
-See [`techniques.md`](techniques.md) for primary-source citations.
+See [`techniques.md`](techniques.md) for the SOTA justification on every
+choice, with primary-source citations.
 
-## Run
-
-```bash
-# Single API key covers every step
-export OPENAI_API_KEY=sk-...
-
-# Install and run
-make install
-make run Q="your research question here"
-
-# Or a canned smoke test
-make smoke
-```
-
-Expected wall-clock: ~45–90s for a typical query (3 parallel web-search
-calls, each doing multi-step reasoning, then one synthesis). Expected
-cost: ~$0.05–$0.25 per query — dominated by `web_search` tool fees.
-
-## Test (no API key needed)
+## Test (no API key, no network, no model needed)
 
 ```bash
 make test
 ```
 
-Uses fully mocked clients — verifies the graph wiring, node contracts,
-parallel fan-out, and state shape without touching any network.
+All external calls are mocked — verifies graph wiring, node contracts,
+parallel fan-out, SearXNG parsing, and state shape. 13 tests.
 
-## Override the defaults
+## Override everything
 
-```bash
-export MODEL_PLANNER=gpt-5-mini        # more capable planner
-export MODEL_SEARCHER=gpt-5             # deeper research searcher
-export MODEL_SYNTHESIZER=gpt-5          # better final synthesis
-export NUM_SUBQUERIES=5                 # broader fan-out
-export TOP_K_EVIDENCE=12                # more evidence into synthesis
-```
+| Env var | Default | Notes |
+|---|---|---|
+| `OPENAI_BASE_URL` | OpenAI's API | Point at Ollama (`:11434/v1`) or vLLM (`:8000/v1`) |
+| `OPENAI_API_KEY` | — | Required by SDK even for local; any value works locally |
+| `MODEL_PLANNER` | `gpt-5-nano` | Small, fast model |
+| `MODEL_SEARCHER` | `gpt-5-mini` | Summarizes search results |
+| `MODEL_SYNTHESIZER` | `gpt-5-mini` | Produces final cited answer |
+| `SEARXNG_URL` | `http://localhost:8888` | Your SearXNG instance |
+| `NUM_SUBQUERIES` | `3` | Search fan-out breadth |
+| `NUM_RESULTS_PER_QUERY` | `5` | SearXNG results per sub-query |
+| `TOP_K_EVIDENCE` | `8` | Evidence chunks kept for synthesis |
 
 ## Files
 
 ```
 beginner/
-├── main.py            # The LangGraph agent (~96 lines, commented)
+├── main.py            # The LangGraph agent (100 lines, commented)
 ├── requirements.txt
 ├── Makefile           # run · smoke · test · install · clean
 ├── README.md          # you're reading it
 ├── techniques.md      # primary-source citations for every choice
-└── test_main.py       # mocked unit tests (12, all green)
+└── test_main.py       # mocked unit tests (13, all green)
 ```

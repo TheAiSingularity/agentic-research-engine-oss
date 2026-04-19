@@ -1,8 +1,7 @@
-"""Mocked tests for research-assistant/beginner (OpenAI-only variant).
+"""Mocked tests for research-assistant/beginner (portable stack).
 
-No API keys required — all OpenAI client calls are patched. Verifies
-the graph wiring, node contracts, and state shape. For a real live
-check, use `make smoke` with OPENAI_API_KEY set.
+No API key or network needed — OpenAI client and SearXNG HTTP are patched.
+For a real live check, use `make smoke` after starting Ollama/vLLM + SearXNG.
 """
 
 from __future__ import annotations
@@ -26,35 +25,42 @@ def _chat_resp(text: str) -> object:
     return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=text))])
 
 
-def _responses_resp(blocks: list[tuple[str, list[str]]]) -> object:
-    """blocks = [(answer_text, [cited_urls]), ...]"""
-    message_items = []
-    for text, urls in blocks:
-        anns = [SimpleNamespace(type="url_citation", url=u) for u in urls]
-        block = SimpleNamespace(type="output_text", text=text, annotations=anns)
-        message_items.append(SimpleNamespace(type="message", content=[block]))
-    return SimpleNamespace(output=message_items)
+def _searxng_json(hits: list[tuple[str, str, str]]) -> dict:
+    """[(url, title, snippet), ...] → SearXNG-shaped JSON."""
+    return {"results": [{"url": u, "title": t, "content": s} for u, t, s in hits]}
 
 
 @pytest.fixture
-def patched_openai(monkeypatch):
-    """Patch OpenAI client with chat (plan/synthesize) and responses (search) stubs."""
+def patched(monkeypatch):
+    """Patch OpenAI client (routed by prompt content) and SearXNG HTTP."""
     import main
 
     def chat_router(*args, **kwargs):
         prompt = kwargs.get("messages", [{}])[0].get("content", "")
         if "Break this research question" in prompt:
             return _chat_resp("sub one\nsub two\nsub three")
+        if "Summarize these sources" in prompt:
+            return _chat_resp("Summary with [1] and [2] citations.")
         return _chat_resp("Final answer with [1][2] citations.")
 
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = chat_router
-    client.responses.create.return_value = _responses_resp(
-        [("snippet from web search", ["https://a.example/1", "https://b.example/2"])]
-    )
     monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
 
-    # Stub core/rag embedder so it doesn't need a real API.
+    # SearXNG JSON response
+    def fake_get(url, params=None, timeout=None):
+        r = mock.MagicMock()
+        r.status_code = 200
+        r.raise_for_status = mock.MagicMock()
+        r.json = lambda: _searxng_json([
+            ("https://a.example/1", "Title A", "snippet A"),
+            ("https://b.example/2", "Title B", "snippet B"),
+        ])
+        return r
+
+    monkeypatch.setattr(main.requests, "get", fake_get)
+
+    # Stub core/rag embedder.
     from core.rag import Retriever
 
     def fake_embed(batch):
@@ -70,38 +76,48 @@ def patched_openai(monkeypatch):
     return client
 
 
-def test_plan_parses_subqueries(patched_openai):
+def test_plan_parses_subqueries(patched):
     import main
 
     result = main._plan({"question": "q", "subqueries": [], "evidence": [], "answer": ""})
     assert result["subqueries"] == ["sub one", "sub two", "sub three"]
 
 
-def test_search_collects_url_citations(patched_openai):
+def test_searxng_hits_parsed(patched):
     import main
 
+    hits = main._searxng("anything")
+    assert len(hits) == 2
+    assert hits[0]["url"] == "https://a.example/1"
+    assert set(hits[0].keys()) == {"url", "title", "snippet"}
+
+
+def test_search_collects_summaries(patched):
     state = {"question": "q", "subqueries": ["s1", "s2"], "evidence": [], "answer": ""}
-    result = main._search(state)
-    # 2 sub-queries × 1 message × 2 URLs each = 4 evidence items.
-    assert len(result["evidence"]) == 4
-    assert all({"url", "title", "text"} <= e.keys() for e in result["evidence"])
-    assert all(e["url"].startswith("https://") for e in result["evidence"])
-
-
-def test_search_falls_back_when_no_citations(patched_openai, monkeypatch):
     import main
 
-    no_citations = _responses_resp([("answer with no citations", [])])
-    client = main.OpenAI()
-    client.responses.create.return_value = no_citations
-    state = {"question": "q", "subqueries": ["only"], "evidence": [], "answer": ""}
     result = main._search(state)
-    assert len(result["evidence"]) == 1
-    assert result["evidence"][0]["url"] == ""
-    assert result["evidence"][0]["text"] == "answer with no citations"
+    # 2 sub-queries × 2 hits each = 4 evidence items. Each text is the summary.
+    assert len(result["evidence"]) == 4
+    assert all(e["text"].startswith("Summary with") for e in result["evidence"])
 
 
-def test_retrieve_passes_through_when_few_evidence(patched_openai):
+def test_search_empty_hits(patched, monkeypatch):
+    import main
+
+    def empty_get(url, params=None, timeout=None):
+        r = mock.MagicMock()
+        r.status_code = 200
+        r.raise_for_status = mock.MagicMock()
+        r.json = lambda: {"results": []}
+        return r
+
+    monkeypatch.setattr(main.requests, "get", empty_get)
+    state = {"question": "q", "subqueries": ["only"], "evidence": [], "answer": ""}
+    assert main._search(state)["evidence"] == []
+
+
+def test_retrieve_passes_through_when_few_evidence(patched):
     import main
 
     evidence = [{"url": "u", "title": "t", "text": "short"}]
@@ -109,7 +125,7 @@ def test_retrieve_passes_through_when_few_evidence(patched_openai):
     assert main._retrieve(state)["evidence"] == evidence
 
 
-def test_retrieve_narrows_when_many_evidence(patched_openai, monkeypatch):
+def test_retrieve_narrows_when_many_evidence(patched, monkeypatch):
     import main
 
     monkeypatch.setattr(main, "TOP_K_EVIDENCE", 3)
@@ -118,14 +134,14 @@ def test_retrieve_narrows_when_many_evidence(patched_openai, monkeypatch):
     assert len(main._retrieve(state)["evidence"]) == 3
 
 
-def test_synthesize_returns_answer_string(patched_openai):
+def test_synthesize_returns_answer_string(patched):
     import main
 
     state = {"question": "q", "subqueries": [], "evidence": [{"url": "u", "title": "t", "text": "snippet"}], "answer": ""}
     assert "Final answer" in main._synthesize(state)["answer"]
 
 
-def test_full_graph_end_to_end(patched_openai):
+def test_full_graph_end_to_end(patched):
     import main
 
     result = main.build_graph().invoke({"question": "test", "subqueries": [], "evidence": [], "answer": ""})
