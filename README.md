@@ -1,183 +1,172 @@
 <p align="center">
-  <strong>agentic-ai-cookbook-lab</strong>
+  <strong>agentic-ai-cookbook-lab · the engine</strong>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/status-wave%208-brightgreen.svg" alt="Status">
-  <img src="https://img.shields.io/badge/recipes-3%20flagship%20%2B%201%20rust-green.svg" alt="Recipes">
-  <img src="https://img.shields.io/badge/tests-159%2F159-brightgreen.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/languages-python%20%2B%20rust-green.svg" alt="Languages">
+  <img src="https://img.shields.io/badge/status-private%20alpha-orange.svg" alt="Status">
+  <img src="https://img.shields.io/badge/default-gemma%203%204B%20local-green.svg" alt="Default">
+  <img src="https://img.shields.io/badge/tests-215%2F215-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/interfaces-CLI%20%7C%20TUI%20%7C%20web-blue.svg" alt="Interfaces">
 </p>
 
-**SOTA research agents that verify their own answers, runnable on any LLM backend, $0 per query when self-hosted.**
+**The best $0 research agent that runs on a laptop.** Open-source
+end-to-end, reproducible, privacy-preserving. No cloud dependency by
+default; no telemetry; every LLM call, every source, and every
+verification decision is visible.
 
-The OpenAI / Anthropic Cookbook model, applied to agentic research:
-one opinionated, benchmarked implementation per task. No vendor lock-in —
-everything talks to any OpenAI-compatible endpoint via one env var
-(`OPENAI_BASE_URL`), so the same code runs on OpenAI, **Ollama** (Mac),
-**vLLM** or **SGLang** (Linux GPU). Search is **self-hosted SearXNG** —
-no paid search API. Full-page content via **trafilatura**. Reranking via
-**BAAI/bge-reranker-v2-m3**. All Apache-2.0 / MIT.
+Runs fully local on Mac M-series via Ollama + Gemma 3 4B + SearXNG +
+trafilatura. Same code runs against any OpenAI-compatible endpoint via
+one env var (`OPENAI_BASE_URL`) — so OpenAI / vLLM / SGLang are
+`--api-key`-away when you want them.
 
-For a fuller explanation at three depths (30-second / 2-minute /
-technical) and an honest comparison vs GPT-5.4 Pro, MiroThinker-H1, and
-OpenResearcher-30B-A3B, see [`docs/how-it-works.md`](docs/how-it-works.md).
-For the wave-by-wave build log see [`docs/progress.md`](docs/progress.md).
+For the deep technical spec, see [`docs/architecture.md`](docs/architecture.md).
+For the wave-by-wave build log, see [`docs/progress.md`](docs/progress.md).
+For the master plan, see [`.project/plans/research-engine-master-plan.md`](.project/plans/research-engine-master-plan.md).
 
 ---
 
-## Recipes
+## What ships
 
-| Recipe | Levels | What it does |
-|---|---|---|
-| [**research-assistant**](recipes/by-use-case/research-assistant/) | `beginner` (100 LOC) · `production` (~520 LOC; Tier 2 + Tier 4 + Waves 4–7) · `eval` harness w/ 12-config ablation | Answers hard research questions with cited sources; decomposes → searches → fetches → reranks → compresses → verifies → iterates. Streams tokens live. |
-| [**trading-copilot**](recipes/by-use-case/trading-copilot/) | `beginner` + `production` + `eval` backtest | Market research + alerts (NOT auto-execution) on a watchlist + rule set. Cheap analyst + escalated skeptic + CoVe-style claim verification. Slack/Telegram/Discord webhooks or stdout. |
-| [**document-qa**](recipes/by-use-case/document-qa/) | `beginner` (~170 LOC) | Bring-your-own-documents Q&A over PDFs / markdown / text / HTML. 4-node pipeline over `CorpusIndex`: hybrid retrieval + streaming synthesis + CoVe verify. No web reach (build-time test enforces). |
+### `engine/` — the flagship research engine
 
-Plus one Rust case-study recipe under `by-pattern/`:
+8-node LangGraph pipeline + memory + compaction + three interfaces + MCP
+distribution + plugin loader:
 
-- [**rust-mcp-search-tool**](recipes/by-pattern/rust-mcp-search-tool/) — ~5 MB static MCP server wrapping SearXNG; demonstrates where Rust genuinely earns its place in the agent stack (and where it doesn't).
+- **Pipeline:** `classify → plan → search → retrieve → fetch_url → compress → synthesize → verify` with 2026-SOTA composition — HyDE, CoVe verification, iterative retrieval, FLARE active retrieval, classifier router, step critic, LongLLMLingua-style compression, cross-encoder rerank, contextual chunking. Every stage env-toggleable for ablation.
+- **Three interfaces, all in parallel**: `engine.interfaces.cli` (rich stdout), `engine.interfaces.tui` (Textual — works over SSH), `engine.interfaces.web` (FastAPI + HTMX on `localhost:8080`).
+- **Memory (opt-in)**: SQLite trajectory log at `~/.agentic-research/memory.db` with semantic retrieval. Three modes: `off` / `session` / `persistent`. Wipe with `engine reset-memory`.
+- **Context compaction**: auto-trims evidence above `CONTEXT_LIMIT_CHARS` while preserving load-bearing (CoVe-verified) URLs.
+- **Six domain presets**: `general`, `medical`, `papers`, `financial`, `stock_trading`, `personal_docs`. YAML-configured in `engine/domains/`. Add your own in <5 min (see [`docs/domains.md`](docs/domains.md)).
+- **MCP server**: Python stdio MCP exposing one `research` tool + `reset_memory` + `memory_count`. Ready to register in Claude Desktop / Cursor / Continue.
+- **Claude plugin bundle**: `engine/mcp/claude_plugin/` with four skills (`/research`, `/cite-sources`, `/verify-claim`, `/set-domain`). Submittable to Anthropic's marketplace.
+- **Plugin loader**: install third-party Claude plugins or Hermes (`agentskills.io`) skills via `engine plugins install gh:owner/repo` or `file:/path`.
 
-## The research-assistant stack — what's actually shipped
+### `core/rag/` — shared retrieval primitives
 
-Seven waves of techniques, each env-toggleable so leave-one-out ablations
-are trivial. **159/159 unit tests green**, all mocked (no network or API
-key required for `pytest`).
+`HybridRetriever` (BM25 + dense + RRF), `CrossEncoderReranker`
+(`BAAI/bge-reranker-v2-m3`), `contextualize_chunks` (Anthropic pattern),
+`CorpusIndex` (bring-your-own-PDFs). 5 exports, stable v1, used by the
+engine and the archived recipes.
 
-**Tier 1 — retrieval** (lives in `core/rag/`)
-- BM25 + dense embeddings + Reciprocal Rank Fusion (`HybridRetriever`)
-- Cross-encoder reranker (`CrossEncoderReranker`, `BAAI/bge-reranker-v2-m3`, lazy-loaded)
-- Anthropic-style contextual chunking (`contextualize_chunks`)
-- **Wave 5:** persistable local corpus (`CorpusIndex`) — index your own PDFs/md/txt/html
+### `archive/recipes/` — historical cookbook recipes
 
-**Tier 2 — adaptive verification** (production tier)
-- HyDE query rewriting, auto-gated on numeric queries
-- Chain-of-Verification after synthesis
-- Iterative retrieval bounded by `MAX_ITERATIONS`
-- Self-consistency voting (opt-in)
+Pre-engine recipes kept as reference implementations. The
+research-assistant production pipeline is now a thin shim over
+`engine.core.pipeline` (zero behavior drift, all tests still green).
 
-**Tier 3 — reproducibility** (eval harness)
-- 12-config ablation runner (`eval/ablation.py`)
-- Pareto plotter (`eval/pareto.py`)
-- Four metrics: factuality (LLM-judge), citation-accuracy, citation-precision, latency
+---
 
-**Tier 4 — 2026 SOTA layered on top**
-- T4.1 ThinkPRM-style step-level critic after plan + search
-- T4.2 FLARE active retrieval on hedged claims
-- T4.3 Question classifier router → compute scales with difficulty
-- T4.4 LLM-based evidence compression before synthesize
-- T4.5 Plan refinement when critic rejects decomposition (opt-in)
-
-**Wave 4 — local-first engine enhancements**
-- W4.1 Cross-encoder rerank wired into `_retrieve` (two-stage retrieval)
-- W4.2 Full-page fetch via `trafilatura` (snippets → clean article text)
-- W4.3 Per-call observability trace (node, model, latency, tokens) — no SaaS
-
-**Wave 5 — bring your own documents**
-- W5.1 `LOCAL_CORPUS_PATH` — index your own PDFs / markdown / text / HTML via `scripts/index_corpus.py`; each sub-query pulls top-K matches from the local index alongside web results. Citations flow as `corpus://<source>#p<page>#c<chunk>`.
-
-**Wave 6 — small-model hardening**
-- W6.1 Three-case synthesize prompt (full / partial with gap flagging / refuse) — eliminates the off-topic hallucinations we saw on `gemma4:e2b` with large evidence contexts.
-- W6.2 `PER_CHUNK_CHAR_CAP` hard-truncates evidence chunks after compress regardless of compressor quality.
-- W6.3 Auto-TopK heuristic shrinks `TOP_K_EVIDENCE` from 8 → 5 when the synthesizer name matches `:e2b` / `:1-4b` / `nano` (doesn't match `mini` — cloud-hosted "mini" models are capable).
-
-**Wave 7 — streaming UX**
-- W7 `ENABLE_STREAM=1` (default on) — synthesize tokens print to stdout as they arrive. Falls back to batched if the backend rejects `stream=True`.
-
-**Wave 8 — document-qa flagship**
-- Third flagship recipe shipped (beginner). 4-node corpus-only pipeline. Same `core/rag` primitives, no `searxng` / `trafilatura.fetch_url` / `requests.get` reach (build-time AST test enforces).
-
-## Three ways to run it
+## Quickstart (Mac local)
 
 ```bash
+# Prerequisites
+brew install ollama                 # or ollama.com/download
+ollama pull gemma3:4b nomic-embed-text
+(cd scripts/searxng && docker compose up -d)
+
+# Engine
 git clone https://github.com/TheAiSingularity/agentic-ai-cookbook-lab
-cd agentic-ai-cookbook-lab
-```
-
-**Mac, fully local (free):**
-```bash
-bash scripts/setup-local-mac.sh     # installs Ollama + gemma4:e2b + nomic-embed + SearXNG
-cd recipes/by-use-case/research-assistant/beginner
+cd agentic-ai-cookbook-lab/engine
 make install
-make smoke
+make smoke                          # canonical end-to-end run
 ```
-On an Apple M4 Pro this runs end-to-end in ~40 s / beginner, ~95–175 s /
-production query (bottleneck is the 2 B local model, not the framework —
-infrastructure overhead is ~3%). Zero dollars.
 
-**GPU VM (4× RTX 6000 Pro, self-hosted):**
+Expected wall-clock on M4 Pro: **~45 s** for a factoid, ~90 s for
+multi-hop synthesis. Zero dollars.
+
+### Three ways to drive it
+
 ```bash
-bash scripts/setup-vm-gpu.sh --engine sglang --spec-dec \
-  --model Qwen/Qwen3.6-35B-A3B
-cd recipes/by-use-case/research-assistant/production
-make smoke
+# CLI
+engine ask "What is Anthropic's contextual retrieval?" --domain papers --memory session
+
+# TUI
+make tui                            # Textual interface; keyboard-driven
+
+# Web GUI
+make gui                            # FastAPI + HTMX at http://localhost:8080
 ```
-Uses SGLang's RadixAttention prefix caching + EAGLE speculative
-decoding. Expected 5–10× speedup over the Mac path with substantially
-better answers — same code, just a bigger brain.
 
-**OpenAI (pay-per-query):**
+### Cloud fallback (opt-in)
+
 ```bash
-cd scripts/searxng && docker compose up -d
-export OPENAI_API_KEY=sk-...
-cd recipes/by-use-case/research-assistant/beginner && make install && make smoke
+engine ask "…" --api-key sk-... --model gpt-5-mini
+# Same pipeline. Different backend. ~$0.003 / query at gpt-5-mini prices.
 ```
-Same code. Different `OPENAI_BASE_URL`. ~$0.003–$0.004 / production
-query at `gpt-5-mini` prices.
 
-**Bring your own documents (optional, on top of any path above):**
+### Bring your own documents
+
 ```bash
-# build a corpus from a directory of PDFs / markdown / text
 python scripts/index_corpus.py build ~/papers --out ~/papers.idx
 export LOCAL_CORPUS_PATH=~/papers.idx
-make run Q="your question"
+engine ask "what does my library say about X?" --domain personal_docs
 ```
+
+---
+
+## What's new / status
+
+| | |
+|---|---|
+| Status | Private alpha. Public launch in Phase 9 of the master plan. |
+| Default model | `gemma3:4b` (3.3 GB via Ollama) |
+| Tests | **215+** mocked, all green, no network or API key needed |
+| Interfaces | CLI · TUI · Web GUI (all three shipped) |
+| MCP | Python server + submittable Claude plugin bundle |
+| Memory | Trajectory log + semantic retrieval (SQLite) |
+| Domains | 6 built-in presets, easy to extend |
+| Plugin loader | Claude plugins + Hermes skills |
+| Honest quality ceiling | 4 B-class; expect 15-25% below 30 B+ on complex multi-hop. See `engine/benchmarks/RESULTS.md`. |
+
+---
 
 ## Repo layout
 
 ```
-recipes/
-  by-use-case/
-    research-assistant/      # beginner + production tiers, eval harness, 12-config ablation
-    trading-copilot/         # beginner + production + backtest
-  by-pattern/
-    rust-mcp-search-tool/    # Rust case study
-
-core/
-  rag/                       # HybridRetriever · CrossEncoderReranker · contextualize_chunks · CorpusIndex
-
-scripts/
-  searxng/                   # docker-compose for self-hosted meta-search
-  setup-local-mac.sh         # Mac dev stack (Ollama)
-  setup-vm-gpu.sh            # Linux GPU stack (vLLM or SGLang, + optional EAGLE)
-  index_corpus.py            # build / info / query a local corpus index
-
-docs/
-  how-it-works.md            # elevator pitches + SOTA comparison (read this first)
-  progress.md                # wave-by-wave build log
-  paper-draft.md             # arXiv tech report skeleton, methodology, ablation matrix
-
-foundations/                 # OpenClaw / OpenShell / NemoClaw / Hermes Agent explainers
+agentic-ai-cookbook-lab/
+├── engine/                        the flagship research engine (Phase 1+)
+│   ├── core/                      pipeline · models · trace · memory · compaction · domains · plugins
+│   ├── interfaces/                cli · tui · web
+│   ├── mcp/                       Python MCP server + Claude plugin bundle
+│   ├── domains/                   6 YAML presets
+│   ├── examples/                  5 worked research examples
+│   ├── benchmarks/                mini fixtures + RESULTS.md
+│   └── tests/                     mocked pytest suite
+├── core/rag/                      shared retrieval primitives (stable v1)
+├── archive/                       pre-engine recipes (kept for reference)
+├── scripts/
+│   ├── searxng/                   self-hosted SearXNG (docker-compose)
+│   ├── setup-local-mac.sh         Mac + Ollama one-liner
+│   ├── setup-vm-gpu.sh            Linux + vLLM/SGLang
+│   └── index_corpus.py            build a CorpusIndex from PDFs/md/txt
+├── docs/
+│   ├── architecture.md            deep technical spec
+│   ├── plugins-skills.md          how to write + install plugins
+│   ├── domains.md                 how to write a domain preset
+│   ├── self-learning.md           trajectory logging + memory model
+│   ├── progress.md                wave-by-wave build log
+│   ├── how-it-works.md            elevator pitches + SOTA comparison
+│   └── paper-draft.md             (future) arXiv tech report
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── LICENSE                        MIT
+└── README.md                      you're reading it
 ```
 
-## Status
+---
 
-- **Waves 0 → 8 all shipped.** Wave 0 skeleton · Wave 0.5 SOTA-per-task pivot · Wave 1 research-assistant beginner · Wave 2 T1-T4 (full SOTA stack + ablation harness) · Wave 3 trading-copilot beginner + production + backtest · Wave 4 local-first engine (rerank wired + trafilatura fetch + observability trace) · Wave 5 local corpus indexing · Wave 6 small-model hardening · Wave 7 streaming synthesis · Wave 8 document-qa third flagship. See [`docs/progress.md`](docs/progress.md).
-- **Pending:** run the 12-config ablation on the GPU VM with SimpleQA-100 + BrowseComp-Plus-50 to produce the paper's numbers.
+## Related (sibling projects)
 
-## Contributing
-
-Issues, recipe requests, and PRs welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
-The recipe format is intentionally opinionated — each recipe ships
-`main.py` + `requirements.txt` + `Makefile` + `test_*.py` + a `techniques.md`
-with primary-source citations. No framework-comparison suites inside
-recipes — one SOTA stack per task.
-
-## Related
-
-- [HermesClaw](https://github.com/TheAiSingularity/hermesclaw) — the secure runtime these recipes can run inside
+- [HermesClaw](https://github.com/TheAiSingularity/hermesclaw) — secure runtime these recipes can run inside
 - [NVIDIA/OpenShell](https://github.com/NVIDIA/OpenShell) — kernel-level agent sandbox
-- [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) — self-improving agent
+- [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) — self-improving agent (whose `agentskills.io` skill format we interoperate with)
 
-MIT licensed.
+---
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
+
+Contributions welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first;
+good-first-issues labeled on GitHub.
