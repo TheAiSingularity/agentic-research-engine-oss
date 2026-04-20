@@ -1,0 +1,22 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "theaisingularity-research",
+  "displayName": "TheAiSingularity — Research Plugins",
+  "description": "Local-first research agents from TheAiSingularity. Currently ships the `agentic-research` plugin (8-node pipeline with CoVe verification, 6 domain presets, bring-your-own-docs).",
+  "maintainer": {
+    "name": "TheAiSingularity",
+    "email": "singularitytheai@gmail.com",
+    "url": "https://github.com/TheAiSingularity"
+  },
+  "plugins": [
+    {
+      "name": "agentic-research",
+      "source": {
+        "type": "local",
+        "path": "engine/mcp/claude_plugin"
+      },
+      "description": "Research agent that verifies its own answers with full source citations, optional local corpus, and zero cloud dependency. Runs on Gemma 3 4B via Ollama or any OpenAI-compatible endpoint.",
+      "categories": ["research", "rag", "local-llm", "verification"]
+    }
+  ]
+}

@@ -1,2 +1,126 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ─────────────────────────────────────────────────────────────────────
+# Project metadata — this is what PyPI + the MCP registry read.
+# Keep `version` in lockstep with CHANGELOG.md + the v* git tags.
+# ─────────────────────────────────────────────────────────────────────
+
+[project]
+name = "agentic-research-engine"
+version = "0.1.1"
+description = "The best $0 research agent that runs on a laptop — local-first, CoVe-verified, with CLI / TUI / Web GUI + MCP server + Claude plugin."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "TheAiSingularity", email = "singularitytheai@gmail.com" },
+]
+keywords = [
+  "research-agent", "rag", "local-first", "ollama", "gemma", "searxng",
+  "claude-plugin", "mcp", "mcp-server", "langgraph", "agentic-ai",
+  "privacy-first", "open-source",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# Runtime deps — mirrors engine/requirements.txt minus test/dev.
+# `sentence-transformers` is heavy (pulls torch); it's optional under
+# the `rerank` extra for users who want W4.1 cross-encoder reranking.
+dependencies = [
+  "langgraph>=0.2.0",
+  "openai>=1.40.0",
+  "requests>=2.32.0",
+  "rank_bm25>=0.2.2",
+  "trafilatura>=1.12.0",
+  "pypdf>=4.0.0",
+  "textual>=0.80.0",
+  "rich>=13.7.0",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.32.0",
+  "jinja2>=3.1.0",
+  "python-multipart>=0.0.9",
+  "sse-starlette>=2.1.0",
+  "mcp>=0.1.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+rerank = ["sentence-transformers>=3.0.0"]
+dev = [
+  "pytest>=8.0.0",
+  "build>=1.2.0",
+  "twine>=5.0.0",
+]
+
+[project.urls]
+Homepage      = "https://github.com/TheAiSingularity/agentic-research-engine-oss"
+Repository    = "https://github.com/TheAiSingularity/agentic-research-engine-oss"
+Issues        = "https://github.com/TheAiSingularity/agentic-research-engine-oss/issues"
+Changelog     = "https://github.com/TheAiSingularity/agentic-research-engine-oss/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/TheAiSingularity/agentic-research-engine-oss/tree/main/docs"
+
+# Console entry-points — `pip install agentic-research-engine` gives users:
+#   `agentic-research <question>`          → the CLI
+#   `agentic-research-mcp`                 → the MCP stdio server
+[project.scripts]
+agentic-research = "engine.interfaces.cli:main"
+agentic-research-mcp = "engine.mcp.server:main"
+
+# ─────────────────────────────────────────────────────────────────────
+# Setuptools package discovery
+# ─────────────────────────────────────────────────────────────────────
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+  "engine",
+  "engine.*",
+  "core",
+  "core.*",
+]
+# Exclude tests + test data from the published wheel.
+exclude = [
+  "tests*",
+  "*.tests",
+  "*.tests.*",
+  "engine.tests*",
+  "core.rag.tests*",
+]
+
+# Ship the non-Python assets the engine needs at runtime (web templates,
+# CSS, domain YAMLs, Claude plugin manifest + skills, benchmark fixtures).
+[tool.setuptools.package-data]
+"engine" = [
+  "domains/*.yaml",
+  "interfaces/web/templates/*.html",
+  "interfaces/web/static/*.css",
+  "interfaces/web/static/*.js",
+  "mcp/claude_plugin/.claude-plugin/*.json",
+  "mcp/claude_plugin/skills/*.md",
+  "mcp/claude_plugin/agents/*.md",
+  "mcp/claude_plugin/README.md",
+  "benchmarks/*.jsonl",
+  "examples/*.md",
+]
+
+# ─────────────────────────────────────────────────────────────────────
+# Pytest config (preserved from the previous stub)
+# ─────────────────────────────────────────────────────────────────────
+
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]

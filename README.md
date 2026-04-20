@@ -4,7 +4,8 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/version-0.1.0--alpha-orange.svg" alt="Version">
+  <img src="https://img.shields.io/pypi/v/agentic-research-engine?color=blue&label=pypi" alt="PyPI">
+  <img src="https://img.shields.io/badge/version-0.1.1--alpha-orange.svg" alt="Version">
   <img src="https://img.shields.io/badge/default-gemma%203%204B%20local-green.svg" alt="Default">
   <img src="https://img.shields.io/badge/tests-229%2F229-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/interfaces-CLI%20%7C%20TUI%20%7C%20web-blue.svg" alt="Interfaces">
@@ -82,23 +83,41 @@ research agent in April 2026.
 
 ## Quickstart — Mac local
 
-```bash
-# 1) Install Ollama (or use your distro's package manager on Linux)
-brew install ollama
+### Option A — PyPI (fastest, once v0.1.1 is published)
 
-# 2) Pull the two models (3.6 GB combined)
+```bash
+# 1) Local inference (Ollama + Gemma 3 4B + embedding model — 3.6 GB combined)
+brew install ollama
 ollama pull gemma3:4b nomic-embed-text
 
-# 3) Self-hosted SearXNG (Docker)
-cd scripts/searxng && docker compose up -d && cd ../..
+# 2) Self-hosted meta-search (Docker; optional but recommended)
+docker run -d --name searxng -p 8888:8080 searxng/searxng
 
-# 4) Engine
+# 3) The engine itself
+pip install agentic-research-engine
+
+# 4) Go
+export OPENAI_BASE_URL=http://localhost:11434/v1 OPENAI_API_KEY=ollama
+export MODEL_SYNTHESIZER=gemma3:4b EMBED_MODEL=nomic-embed-text
+export SEARXNG_URL=http://localhost:8888
+agentic-research ask "what is Anthropic's contextual retrieval?" --domain papers
+```
+
+### Option B — from source
+
+```bash
+# 1) Same local-inference prereqs as Option A (ollama pull + docker run)
+
+# 2) Clone + install (gives you the CLI, TUI, Web GUI, MCP server, benchmarks, tutorials)
+git clone https://github.com/TheAiSingularity/agentic-research-engine-oss
+cd agentic-research-engine-oss
+(cd scripts/searxng && docker compose up -d)
 cd engine && make install
 make smoke    # end-to-end run on the canonical "what is contextual retrieval" question
 ```
 
 Expected wall-clock on an M-series Mac: **~45 s** for a factoid,
-~90 s for multi-hop synthesis. Zero dollars.
+~90 s for multi-hop synthesis. Zero dollars per query.
 
 ---
 

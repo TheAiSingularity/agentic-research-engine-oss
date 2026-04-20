@@ -1,0 +1,77 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.TheAiSingularity/agentic-research",
+  "description": "Local-first research agent that verifies its own answers. 8-node LangGraph pipeline (classify → plan → search → retrieve → fetch_url → compress → synthesize → verify) with CoVe verification, cross-encoder rerank, contextual chunking, and 6 domain presets (general, medical, papers, financial, stock_trading, personal_docs). Default stack: Gemma 3 4B via Ollama + SearXNG + trafilatura, $0 per query. Any OpenAI-compatible endpoint via OPENAI_BASE_URL.",
+  "version": "0.1.1",
+  "repository": {
+    "url": "https://github.com/TheAiSingularity/agentic-research-engine-oss",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "agentic-research-engine",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "python -m engine.mcp.server",
+      "environmentVariables": [
+        {
+          "name": "OPENAI_BASE_URL",
+          "description": "Any OpenAI-compatible endpoint. Default: OpenAI cloud. Use http://localhost:11434/v1 for Ollama.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "description": "API key for the endpoint above. Use 'ollama' as a sentinel value when running locally against Ollama.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MODEL_SYNTHESIZER",
+          "description": "Model identifier used for the synthesize node. Defaults to 'gpt-5-mini'; set to 'gemma3:4b' for Mac-local Ollama.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "MODEL_PLANNER",
+          "description": "Model for the plan / classify / critic / compress / verify nodes. Defaults to 'gpt-5-nano'.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "EMBED_MODEL",
+          "description": "Embedding model identifier (for retrieval + memory). Default 'text-embedding-3-small'; use 'nomic-embed-text' on Ollama.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SEARXNG_URL",
+          "description": "Base URL of the SearXNG meta-search instance. Default http://localhost:8888.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "LOCAL_CORPUS_PATH",
+          "description": "Path to an index directory built via scripts/index_corpus.py. When set, local corpus hits augment web search.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ENABLE_RERANK",
+          "description": "Set to '1' to enable the BAAI/bge-reranker-v2-m3 cross-encoder rerank stage. First run downloads ~560MB.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ENABLE_FETCH",
+          "description": "Set to '0' to skip the trafilatura full-page fetch stage. Default '1'.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

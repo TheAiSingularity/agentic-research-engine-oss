@@ -1,0 +1,45 @@
+# Belt-and-braces sdist inclusion rules for `agentic-research-engine`.
+# `[tool.setuptools.package-data]` in pyproject.toml covers the wheel;
+# this file ensures the sdist (source tarball on PyPI) has everything
+# a user needs to rebuild + reinstall from source.
+
+include README.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include CODE_OF_CONDUCT.md
+include LICENSE
+include pyproject.toml
+include server.json
+include marketplace.json
+
+# Engine runtime assets
+recursive-include engine *.yaml *.yml *.md *.json
+recursive-include engine/interfaces/web/templates *.html
+recursive-include engine/interfaces/web/static *.css *.js *.png *.svg
+recursive-include engine/mcp/claude_plugin *.md *.json
+recursive-include engine/domains *.yaml
+recursive-include engine/benchmarks *.jsonl *.md
+recursive-include engine/examples *.md
+
+# Docs bundled so offline users have them
+recursive-include docs *.md
+
+# Exclude caches + venvs + build artifacts + tests from the sdist.
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
+global-exclude *.egg-info
+recursive-exclude .venv* *
+recursive-exclude **/.venv* *
+prune .venv
+prune .venv-dev
+prune build
+prune dist
+prune .git
+prune .github
+prune archive
+prune recipes
+prune tutorials
+prune scripts
+prune core/rag/tests
+prune engine/tests

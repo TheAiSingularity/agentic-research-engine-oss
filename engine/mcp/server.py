@@ -54,7 +54,7 @@ from engine.interfaces.common import (  # noqa: E402
 )
 
 
-mcp = FastMCP("engine-research")
+mcp = FastMCP("agentic-research")
 
 
 @mcp.tool()

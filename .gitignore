@@ -50,3 +50,5 @@ corpus-*/
 
 # Node (for any future JS tooling)
 node_modules/
+/dist/
+/build/

@@ -7,6 +7,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <!-- toc -->
 
 - [Unreleased](#unreleased)
+- [0.1.1 — packaging + marketplaces](#011--packaging--marketplaces-2026-04-21)
 - [0.1.0 — public alpha](#010--public-alpha-2026-04-21)
 - [Pre-0.1 wave history](#pre-01-wave-history)
 
@@ -17,6 +18,74 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 Work-in-progress on `main` between releases. Nothing here yet.
+
+---
+
+## [0.1.1] — packaging + marketplaces — 2026-04-21
+
+PyPI-ready. Both official marketplace submissions prepared. No new
+user-facing features; naming consistency fix and install UX.
+
+### Added
+
+- **Full `pyproject.toml`** — package metadata, runtime deps mirroring
+  `engine/requirements.txt`, `dev` + `rerank` optional extras, and two
+  console-script entry points:
+  - `agentic-research` → `engine.interfaces.cli:main`
+  - `agentic-research-mcp` → `engine.mcp.server:main`
+  - Setuptools `package-data` rules to ship domain YAMLs, web
+    templates/CSS, Claude plugin manifest + skills, and benchmark
+    fixtures inside the wheel.
+- **`MANIFEST.in`** — explicit sdist inclusion rules for README,
+  CHANGELOG, LICENSE, engine assets, docs. Prunes venvs, build
+  artifacts, tests.
+- **`server.json`** at repo root — MCP registry manifest.
+  `name: io.github.TheAiSingularity/agentic-research`, points at the
+  PyPI package, declares stdio transport + 9 environment variables.
+- **`marketplace.json`** at repo root — Anthropic Claude plugin
+  marketplace discovery manifest. Single plugin entry pointing at
+  `engine/mcp/claude_plugin/`.
+- **`docs/submit-claude-plugin.md`** — step-by-step submission guide
+  including slash-command smoke test, community-aggregator listings,
+  rollback notes.
+- **`docs/submit-mcp-registry.md`** — step-by-step PyPI upload +
+  `mcp-publisher` flow including pitfalls and version-bump playbook.
+
+### Changed
+
+- **MCP server name unified** — `FastMCP("engine-research")` renamed to
+  `FastMCP("agentic-research")` so the package name, plugin name, MCP
+  server name, and registry identifier all align. Users searching
+  "agentic research" on any marketplace now find the same thing.
+- **`engine.__version__`** bumped `0.1.0` → `0.1.1`.
+- **Plugin manifest version** bumped `0.1.0` → `0.1.1`.
+
+### Install (new options in this release)
+
+From PyPI:
+
+```bash
+pip install agentic-research-engine
+agentic-research version                   # → "engine v0.1.1"
+agentic-research ask "what is hybrid retrieval?" --domain papers
+```
+
+From source (unchanged):
+
+```bash
+git clone https://github.com/TheAiSingularity/agentic-research-engine-oss
+cd agentic-research-engine-oss/engine && make install
+```
+
+### Distribution surfaces ready
+
+| surface | status |
+|---|---|
+| PyPI (`agentic-research-engine`) | artifacts built + smoke-tested in fresh venv; awaiting `twine upload` |
+| MCP registry (`io.github.TheAiSingularity/agentic-research`) | `server.json` ready; submit via `mcp-publisher publish` |
+| Anthropic Claude marketplace | `marketplace.json` at repo root; `/plugin marketplace add <repo-url>` installs |
+| claudemarketplaces.com (community) | follow-up PR per [`docs/submit-claude-plugin.md`](docs/submit-claude-plugin.md) |
+| mcp.so (community) | picks up automatically from the MCP registry once published |
 
 ---
 
