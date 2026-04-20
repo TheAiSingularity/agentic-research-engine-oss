@@ -133,6 +133,43 @@ def test_format_trace_per_node(patched_graph):
     assert rows[0]["latency_s"] >= rows[-1]["latency_s"]
 
 
+# ── Domain preset application (Fix #1 from gap analysis) ────────────
+
+def test_run_query_applies_domain_preset_prompt_suffix(patched_graph):
+    """Domain presets append their synthesize_prompt_extra to the question
+    before the pipeline's graph is invoked, so the synthesize node sees
+    the domain rules without needing to read state['domain']."""
+    _ = common_mod.run_query("test question", domain="medical")
+    invoked_state = patched_graph["last_state"]
+    # medical.yaml prompt_extra includes "DOMAIN: medical" lines
+    assert "DOMAIN: medical" in invoked_state["question"]
+
+
+def test_run_query_applies_stock_trading_safety_language(patched_graph):
+    _ = common_mod.run_query("test", domain="stock_trading")
+    invoked_state = patched_graph["last_state"]
+    # stock_trading.yaml prompt_extra contains explicit safety language
+    assert "DOMAIN: stock_trading" in invoked_state["question"]
+    assert "never recommend" in invoked_state["question"].lower()
+
+
+def test_run_query_unknown_domain_falls_back_to_general(patched_graph, capsys):
+    """Typo in domain name → fall back to general (with stderr warning),
+    never crash the pipeline."""
+    _ = common_mod.run_query("test", domain="definitely-not-a-real-preset")
+    # Didn't raise
+    err = capsys.readouterr().err
+    assert "not found" in err
+    assert "general" in err
+
+
+def test_run_query_general_preset_applies_without_crash(patched_graph):
+    _ = common_mod.run_query("test", domain="general")
+    invoked_state = patched_graph["last_state"]
+    # general.yaml has empty prompt_extra, so no DOMAIN: line expected
+    assert "test" in invoked_state["question"]
+
+
 # ── CLI parser + commands ────────────────────────────────────────────
 
 def test_cli_build_parser_supports_bare_question(patched_graph, capsys):

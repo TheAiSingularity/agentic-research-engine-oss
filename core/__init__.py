@@ -1,1 +1,1 @@
-"""core — shared library for agentic-ai-cookbook-lab recipes."""
+"""core — shared library for agentic-research-engine-oss."""

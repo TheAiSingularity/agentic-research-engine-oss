@@ -14,7 +14,7 @@ decision.
       Default if nothing chosen: `agentic-research`.
 - [ ] **Renaming decision**:
       - [ ] Rename the repo on GitHub (`gh repo rename <new-name>`)
-      - [ ] OR keep `agentic-ai-cookbook-lab` and just reposition the README.
+      - [ ] OR keep `agentic-research-engine-oss` and just reposition the README.
 - [ ] **First full benchmark run** complete — `engine/benchmarks/RESULTS.md`
       has real numbers from the shipped `simpleqa_mini` + `browsecomp_mini`
       fixtures. Today the file documents the harness; Phase 9 fills in
@@ -35,7 +35,7 @@ decision.
 
 ```bash
 # 1. Rename (optional — only if you picked a new name)
-gh repo rename TheAiSingularity/agentic-ai-cookbook-lab <new-name>
+gh repo rename TheAiSingularity/agentic-research-engine-oss <new-name>
 
 # 2. Flip visibility
 gh repo edit TheAiSingularity/<name> \

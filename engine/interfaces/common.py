@@ -8,11 +8,14 @@ interface front-ends stay thin.
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from engine.core import build_graph
+from engine.core import domains as _domains
 from engine.core.memory import MemoryStore, Trajectory, summarize_hits
 
 
@@ -40,6 +43,34 @@ def _trace_totals(trace: list[dict]) -> tuple[float, int]:
     return round(lat, 3), tok
 
 
+def _apply_domain_preset(domain: str) -> tuple[_domains.DomainPreset | None, str]:
+    """Load and apply a domain preset; return (preset, prompt_suffix).
+
+    Sets env-var overrides (LOCAL_CORPUS_PATH, TOP_K_EVIDENCE) before the
+    pipeline graph reads them. If the preset is missing, prints a warning
+    and falls back to general (so CLI / Web callers don't crash on typos).
+    Returns the preset's synthesize_prompt_extra as the suffix to append
+    to the question so the extra rules reach the synthesize node too.
+    """
+    try:
+        preset = _domains.load(domain)
+    except FileNotFoundError:
+        if domain != "general":
+            print(
+                f"[engine] domain preset {domain!r} not found — falling back to 'general'.",
+                file=sys.stderr,
+            )
+        try:
+            preset = _domains.load("general")
+        except FileNotFoundError:
+            return None, ""
+
+    overrides = _domains.apply_preset(preset)
+    for k, v in overrides.items():
+        os.environ[k] = v
+    return preset, (preset.synthesize_prompt_extra or "").strip()
+
+
 def run_query(
     question: str,
     *,
@@ -49,15 +80,26 @@ def run_query(
 ) -> RunResult:
     """Execute the engine pipeline end-to-end and package the result.
 
-    If `memory` is provided, prior-trajectory hits are pulled first and
-    their summaries optionally stitched into the question as the pipeline
-    enters `classify`. The trajectory itself is recorded on completion.
+    Orchestration pre-pipeline:
+      1. Load the requested domain preset (falls back to `general`).
+      2. Apply any env-var overrides the preset declares (LOCAL_CORPUS_PATH,
+         TOP_K_EVIDENCE) before `build_graph()` is called.
+      3. Append the preset's synthesize_prompt_extra to the question so the
+         synthesize node sees the domain rules (since it doesn't branch on
+         `state["domain"]`).
+      4. If `memory` is given, retrieve prior-trajectory hits and inject
+         their summaries as additional context.
+
+    After the graph invoke completes, a trajectory is recorded (if memory
+    is on) using the ORIGINAL question — not the augmented one.
     """
+    preset, prompt_suffix = _apply_domain_preset(domain)
+
     memory_hits_payload: list[dict] = []
     injected_question = question
 
     if memory is not None:
-        hits = memory.retrieve(question)
+        hits = memory.retrieve(question, domain=domain if domain != "general" else None)
         if hits:
             memory_hits_payload = [
                 {
@@ -71,6 +113,10 @@ def run_query(
                 for t, score in hits
             ]
             injected_question = f"{question}\n\n(Context from prior related research:\n{summarize_hits(hits)}\n)"
+
+    # Stitch the domain's prompt delta in last so it's most-recently seen.
+    if prompt_suffix:
+        injected_question = f"{injected_question}\n\n[{prompt_suffix}]"
 
     t0 = time.monotonic()
     graph = build_graph()

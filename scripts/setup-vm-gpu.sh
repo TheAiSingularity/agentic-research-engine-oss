@@ -110,7 +110,7 @@ fi
 if [ "$ENGINE" = "vllm" ]; then
   cat > "$UNIT" <<EOF
 [Unit]
-Description=vLLM OpenAI-compatible server (agentic-ai-cookbook-lab)
+Description=vLLM OpenAI-compatible server (agentic-research-engine-oss)
 After=network.target
 
 [Service]
@@ -132,7 +132,7 @@ EOF
 else
   cat > "$UNIT" <<EOF
 [Unit]
-Description=SGLang OpenAI-compatible server (agentic-ai-cookbook-lab)
+Description=SGLang OpenAI-compatible server (agentic-research-engine-oss)
 After=network.target
 
 [Service]

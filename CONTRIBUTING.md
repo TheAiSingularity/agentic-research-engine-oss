@@ -50,8 +50,8 @@ two weeks, ping us on the issue.
 
 ```bash
 # 1. Clone
-git clone https://github.com/TheAiSingularity/agentic-ai-cookbook-lab
-cd agentic-ai-cookbook-lab
+git clone https://github.com/TheAiSingularity/agentic-research-engine-oss
+cd agentic-research-engine-oss
 
 # 2. Local stack
 brew install ollama                 # or https://ollama.com/download

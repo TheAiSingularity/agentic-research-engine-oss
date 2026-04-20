@@ -1,4 +1,4 @@
-# SearXNG — self-hosted search for agentic-ai-cookbook-lab recipes
+# SearXNG — self-hosted search for agentic-research-engine-oss recipes
 
 Runs a local SearXNG instance with the JSON API enabled, so our research-assistant recipe can query the web without any paid search API (Exa, Tavily, Brave, OpenAI web_search).
 

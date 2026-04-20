@@ -11,5 +11,6 @@ rss_feeds: []
 synthesize_prompt_extra: ""
 
 min_verified_ratio: 0.0
-top_k_evidence:
+# top_k_evidence: omitted → pipeline uses its own default (auto-shrinks
+# for small models via _default_top_k).
 tools_enabled: []

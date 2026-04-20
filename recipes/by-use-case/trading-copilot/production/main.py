@@ -89,7 +89,7 @@ def _fetch_social(ticker: str) -> list[dict]:
         return []
     client_id = ENV("REDDIT_CLIENT_ID")
     client_secret = ENV("REDDIT_CLIENT_SECRET")
-    user_agent = ENV("REDDIT_USER_AGENT", "agentic-ai-cookbook-lab/trading-copilot")
+    user_agent = ENV("REDDIT_USER_AGENT", "agentic-research-engine-oss/trading-copilot")
     if not client_id or not client_secret:
         return []
     try:

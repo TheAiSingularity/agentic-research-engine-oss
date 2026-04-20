@@ -31,15 +31,15 @@ ollama pull gemma3:4b               # 3.3 GB
 ollama pull nomic-embed-text        # 274 MB
 
 # 2. Self-hosted SearXNG (Docker)
-cd agentic-ai-cookbook-lab/scripts/searxng && docker compose up -d
+cd agentic-research-engine-oss/scripts/searxng && docker compose up -d
 
 # 3. Engine install
-cd agentic-ai-cookbook-lab/engine && make install
+cd agentic-research-engine-oss/engine && make install
 ```
 
 **Plugin install** (in Claude Desktop or Claude Code):
 
-1. Clone this repo: `git clone https://github.com/TheAiSingularity/agentic-ai-cookbook-lab`
+1. Clone this repo: `git clone https://github.com/TheAiSingularity/agentic-research-engine-oss`
 2. Register as a marketplace: `/plugin marketplace add <path-to-clone>/engine/mcp/claude_plugin`
 3. Install: `/plugin install agentic-research`
 4. Verify: `/plugin list` should show `agentic-research` enabled.

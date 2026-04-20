@@ -36,13 +36,17 @@ except ImportError:  # pragma: no cover
     raise SystemExit(1)
 
 from engine import __version__ as _ENGINE_VERSION  # noqa: E402
-from engine.core.memory import MemoryStore  # noqa: E402
+from engine.core import domains as _domains  # noqa: E402
+from engine.core.memory import MemoryStore, VALID_MODES as _VALID_MEMORY_MODES  # noqa: E402
 from engine.interfaces.common import (  # noqa: E402
     format_sources,
     format_trace_per_node,
     format_verified_summary,
     run_query,
 )
+
+
+_VALID_DOMAINS = frozenset(_domains.list_names()) or frozenset({"general"})
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -71,9 +75,25 @@ async def ask(
     if not q:
         return HTMLResponse("<div class='err'>Empty question.</div>", status_code=400)
 
-    store = MemoryStore.open(memory) if memory in ("off", "session", "persistent") else None
-    result = run_query(q, domain=domain, memory=store)
-    if store is not None:
+    # Validate inputs so malformed form posts fail loudly rather than crashing
+    # the pipeline with opaque internal errors.
+    if memory not in _VALID_MEMORY_MODES:
+        return HTMLResponse(
+            f"<div class='err'>Invalid memory mode {memory!r}. "
+            f"Must be one of: {sorted(_VALID_MEMORY_MODES)}.</div>",
+            status_code=400,
+        )
+    if domain not in _VALID_DOMAINS:
+        return HTMLResponse(
+            f"<div class='err'>Unknown domain {domain!r}. "
+            f"Available: {sorted(_VALID_DOMAINS)}.</div>",
+            status_code=400,
+        )
+
+    store = MemoryStore.open(memory)
+    try:
+        result = run_query(q, domain=domain, memory=store)
+    finally:
         store.close()
 
     return templates.TemplateResponse("result.html", {

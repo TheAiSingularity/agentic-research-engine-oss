@@ -5,7 +5,7 @@
 **Authors:** TBD (TheAiSingularity)
 **Target venue:** Technical blog post + arXiv tech report (no formal peer-review deadline)
 **Draft date:** 2026-04-20
-**Repository:** https://github.com/TheAiSingularity/agentic-ai-cookbook-lab (commit hash locked at submission)
+**Repository:** https://github.com/TheAiSingularity/agentic-research-engine-oss (commit hash locked at submission)
 
 ---
 
@@ -292,8 +292,8 @@ All runs reproducible from the commit hash at submission. To rebuild all
 numbers on the same hardware:
 
 ```bash
-git clone https://github.com/TheAiSingularity/agentic-ai-cookbook-lab
-cd agentic-ai-cookbook-lab
+git clone https://github.com/TheAiSingularity/agentic-research-engine-oss
+cd agentic-research-engine-oss
 bash scripts/setup-vm-gpu.sh --engine sglang --spec-dec \
   --model Qwen/Qwen3.6-35B-A3B
 cd recipes/by-use-case/research-assistant/eval

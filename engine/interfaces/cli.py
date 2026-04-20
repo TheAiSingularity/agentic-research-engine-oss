@@ -24,7 +24,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from engine.core.memory import MemoryStore, VALID_MODES  # noqa: E402
-from engine.core.trace import _print_trace_summary  # noqa: E402
 from engine.interfaces.common import (  # noqa: E402
     format_sources,
     format_trace_per_node,

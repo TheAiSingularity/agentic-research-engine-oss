@@ -683,7 +683,12 @@ def test_corpus_hits_handles_query_failure(patched, monkeypatch, capsys):
     assert "query failed" in capsys.readouterr().err
 
 
-def test_get_corpus_caches_load_failure_and_falls_back(patched, monkeypatch, capsys):
+def test_get_corpus_silently_skips_missing_index(patched, monkeypatch, capsys):
+    """FileNotFoundError → quiet skip (user hasn't built the index yet).
+
+    No stderr noise; _CORPUS stays None; retry cached so we don't hammer
+    the filesystem on every subsequent query.
+    """
     from core.rag import CorpusIndex
 
     monkeypatch.setattr(main, "LOCAL_CORPUS_PATH", "/nonexistent")
@@ -692,15 +697,35 @@ def test_get_corpus_caches_load_failure_and_falls_back(patched, monkeypatch, cap
 
     call_count = {"n": 0}
 
-    def failing_load(path, embedder=None):
+    def missing_load(path, embedder=None):
         call_count["n"] += 1
         raise FileNotFoundError(str(path))
 
-    monkeypatch.setattr(CorpusIndex, "load", classmethod(lambda cls, p, embedder=None: failing_load(p)))
+    monkeypatch.setattr(CorpusIndex, "load", classmethod(lambda cls, p, embedder=None: missing_load(p)))
     assert main._get_corpus() is None
-    assert main._get_corpus() is None  # still None, but load not retried
+    assert main._get_corpus() is None  # retry cached, load called once
     assert call_count["n"] == 1
-    assert "load failed" in capsys.readouterr().err
+    # FileNotFoundError is the common "user hasn't built the index" case — quiet.
+    assert capsys.readouterr().err == ""
+
+
+def test_get_corpus_loudly_warns_when_index_broken(patched, monkeypatch, capsys):
+    """Non-FileNotFoundError → loud stderr warning with LOAD BROKEN."""
+    from core.rag import CorpusIndex
+
+    monkeypatch.setattr(main, "LOCAL_CORPUS_PATH", "/broken/index")
+    monkeypatch.setattr(main, "_CORPUS", None)
+    monkeypatch.setattr(main, "_CORPUS_LOAD_FAILED", False)
+
+    def broken_load(path, embedder=None):
+        raise RuntimeError("pickle protocol mismatch")
+
+    monkeypatch.setattr(CorpusIndex, "load", classmethod(lambda cls, p, embedder=None: broken_load(p)))
+    assert main._get_corpus() is None
+    err = capsys.readouterr().err
+    assert "LOAD BROKEN" in err
+    assert "pickle protocol mismatch" in err
+    assert "falling back to web-only" in err
 
 
 def test_search_merges_corpus_hits_into_evidence(patched, monkeypatch):

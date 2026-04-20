@@ -211,7 +211,7 @@ def run_benchmark(fixture_path: Path, *, model: str | None = None,
         per_question=[asdict(q) for q in per_q],
     )
 
-    out_dir = out_dir or (BENCH_DIR / "results" / fixture_path.stem)
+    out_dir = Path(out_dir) if out_dir else (BENCH_DIR / "results" / fixture_path.stem)
     out_dir.mkdir(parents=True, exist_ok=True)
     ts = summary.timestamp.replace(":", "").replace("+0000", "Z")
     (out_dir / f"{ts}_summary.json").write_text(json.dumps(asdict(summary), indent=2))

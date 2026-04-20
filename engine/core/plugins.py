@@ -126,7 +126,10 @@ def _parse_yaml_frontmatter(text: str) -> tuple[dict, str]:
             # list item under `current_key`
             if current_key is None:
                 continue
-            meta.setdefault(current_key, []).append(line.strip()[2:].strip())
+            val = line.strip()[2:].strip()
+            if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                val = val[1:-1]
+            meta.setdefault(current_key, []).append(val)
         elif ":" in line:
             k, _, v = line.partition(":")
             k = k.strip()

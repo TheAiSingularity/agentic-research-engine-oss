@@ -54,7 +54,7 @@ export CONSISTENCY_SAMPLES=3
 export ENABLE_SOCIAL=0
 export REDDIT_CLIENT_ID=...
 export REDDIT_CLIENT_SECRET=...
-export REDDIT_USER_AGENT=agentic-ai-cookbook-lab/trading-copilot
+export REDDIT_USER_AGENT=agentic-research-engine-oss/trading-copilot
 export SOCIAL_SUBREDDITS=wallstreetbets,stocks
 
 # Model routing (reuses research-assistant's contract)

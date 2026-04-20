@@ -1,4 +1,4 @@
-# Progress — `agentic-ai-cookbook-lab`
+# Progress — `agentic-research-engine-oss`
 
 One-page summary of what's been built, with links into the details.
 For the elevator pitch and SOTA comparison, see
@@ -228,7 +228,7 @@ These are the known next steps, in priority order:
 ## File map (at a glance)
 
 ```
-agentic-ai-cookbook-lab/
+agentic-research-engine-oss/
 ├── README.md                          # repo hero, portable-stack story
 ├── docs/
 │   ├── progress.md                    # ← YOU ARE HERE

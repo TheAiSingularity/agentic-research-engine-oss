@@ -233,15 +233,33 @@ _CORPUS_LOAD_FAILED = False
 
 
 def _get_corpus() -> CorpusIndex | None:
+    """Load the LOCAL_CORPUS_PATH index once per process; None if not configured.
+
+    LOCAL_CORPUS_PATH read at call time (not module load) so domain presets
+    that set it via env-var overrides take effect. Errors:
+      - FileNotFoundError: treated as "not set yet" — we silently skip corpus
+        augmentation. Common in misconfigured setups.
+      - Any other Exception: treated as "corpus broken" — louder warning on
+        stderr + cache the failure so we don't retry on every query.
+    """
     global _CORPUS, _CORPUS_LOAD_FAILED
-    if _CORPUS is not None or _CORPUS_LOAD_FAILED or not LOCAL_CORPUS_PATH:
+    path = os.environ.get("LOCAL_CORPUS_PATH", "") or LOCAL_CORPUS_PATH
+    if _CORPUS is not None or _CORPUS_LOAD_FAILED or not path:
         return _CORPUS
     try:
-        _CORPUS = CorpusIndex.load(LOCAL_CORPUS_PATH)
-        print(f"[corpus] loaded {len(_CORPUS.chunks)} chunks from {LOCAL_CORPUS_PATH}",
+        _CORPUS = CorpusIndex.load(path)
+        print(f"[corpus] loaded {len(_CORPUS.chunks)} chunks from {path}",
               file=sys.stderr)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[corpus] load failed, falling back to web-only: {exc}", file=sys.stderr)
+    except FileNotFoundError:
+        # The index directory / file doesn't exist. Quiet skip (user likely
+        # hasn't built the index yet); the warning would be noise.
+        _CORPUS_LOAD_FAILED = True
+        return None
+    except Exception as exc:  # noqa: BLE001 — real breakage deserves a visible warning
+        print(f"[corpus] LOAD BROKEN at {path}: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+        print(f"[corpus]   falling back to web-only search for the rest of this run",
+              file=sys.stderr)
         _CORPUS_LOAD_FAILED = True
         return None
     return _CORPUS

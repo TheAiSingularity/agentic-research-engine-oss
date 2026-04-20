@@ -92,7 +92,12 @@ def _chat_stream(model: str, prompt: str, temperature: float = 0.0, sink=None) -
             temperature=temperature,
             stream=True,
         )
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — backend may reject streaming; fall back
+        # Only print on stderr when the user has trace enabled — otherwise
+        # silent fallback keeps scripted runs clean.
+        if _trace.ENABLE_TRACE:
+            print(f"[stream] backend rejected streaming, falling back to batched: "
+                  f"{type(exc).__name__}", file=sys.stderr)
         return _chat(model, prompt, temperature)
 
     pieces: list[str] = []
@@ -106,8 +111,10 @@ def _chat_stream(model: str, prompt: str, temperature: float = 0.0, sink=None) -
             if tok:
                 pieces.append(tok)
                 sink(tok)
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — mid-stream break shouldn't crash the pipeline
+        if _trace.ENABLE_TRACE:
+            print(f"[stream] mid-stream error after {len(pieces)} tokens: "
+                  f"{type(exc).__name__}: {exc}", file=sys.stderr)
     sink("\n")
 
     content = "".join(pieces)

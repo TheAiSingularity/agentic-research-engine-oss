@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "Minimal Rust MCP server wrapping a SearXNG instance — a case study in where Rust earns its place in the agent stack."
-repository = "https://github.com/TheAiSingularity/agentic-ai-cookbook-lab"
+repository = "https://github.com/TheAiSingularity/agentic-research-engine-oss"
 
 [[bin]]
 name = "mcp-search"

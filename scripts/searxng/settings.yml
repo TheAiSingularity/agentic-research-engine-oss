@@ -1,4 +1,4 @@
-# SearXNG settings for agentic-ai-cookbook-lab
+# SearXNG settings for agentic-research-engine-oss
 # JSON format enabled so agent code can parse responses.
 use_default_settings: true
 

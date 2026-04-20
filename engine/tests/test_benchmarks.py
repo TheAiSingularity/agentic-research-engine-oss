@@ -124,6 +124,15 @@ def test_apply_ablations_ignores_unknown_flag(monkeypatch, capsys):
 
 # ── run_benchmark ────────────────────────────────────────────────────
 
+def test_run_benchmark_accepts_string_out_dir(stubbed_pipeline, tiny_fixture, tmp_path):
+    """Regression: out_dir as str (not just Path) must still work."""
+    out_str = str(tmp_path / "str_out")
+    summary = runner.run_benchmark(tiny_fixture, out_dir=out_str)
+    from pathlib import Path as _P
+    assert (_P(out_str)).exists()
+    assert summary.n_questions == 3
+
+
 def test_run_benchmark_writes_summary_and_detail(stubbed_pipeline, tiny_fixture, tmp_path):
     out = tmp_path / "out"
     summary = runner.run_benchmark(tiny_fixture, out_dir=out)

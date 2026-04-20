@@ -1,10 +1,19 @@
 # engine/
 
-The flagship research engine. 8-node LangGraph pipeline (`classify → plan →
-search → retrieve → fetch_url → compress → synthesize → verify`) with W4
-local-first enhancements, W6 small-model hardening, and W7 streaming
-synthesis. Runs fully local on Mac M4 Pro with Gemma 3 4 B + Ollama + SearXNG,
-or against any OpenAI-compatible endpoint via `OPENAI_BASE_URL`.
+The flagship research engine. 8-node LangGraph pipeline with 2026-SOTA
+composition. Runs fully local on Mac M-series with Gemma 3 4 B + Ollama
++ SearXNG, or against any OpenAI-compatible endpoint via
+`OPENAI_BASE_URL`.
+
+## Table of contents
+
+- [Layout](#layout)
+- [Quickstart](#quickstart)
+- [Configuration](#configuration)
+- [How the pipeline works](#how-the-pipeline-works)
+- [Tests](#tests)
+- [Troubleshooting](#troubleshooting)
+- [Next phases](#next-phases)
 
 ---
 
@@ -107,9 +116,29 @@ All eight nodes are env-toggleable for leave-one-out ablation.
 make test                        # mocked; no API key or network needed
 ```
 
-Target: 159+ green. Current recipe tests (research-assistant/trading-copilot/
-document-qa) still pass unchanged via the `production/main.py` shim that
-re-exports from `engine.core`.
+Target: 120+ engine tests green; 229+ repo-wide (engine + core/rag +
+archived recipes + trading-copilot). CI runs these on every PR —
+[`../.github/workflows/engine-tests.yml`](../.github/workflows/engine-tests.yml).
+
+---
+
+## Troubleshooting
+
+Common issues — full list in the [root README troubleshooting section](../README.md#troubleshooting).
+
+- **`ModuleNotFoundError: engine`** — run from the repo root with
+  `PYTHONPATH=$(pwd)` set, or use the Makefile targets (they set it
+  for you).
+- **Empty answers** — Ollama or SearXNG down. `ollama serve` and
+  `docker compose -f ../scripts/searxng/docker-compose.yml ps`.
+- **First `make smoke` is slow** — Ollama is warming up the model
+  on first request. Subsequent queries are 2–4× faster.
+- **`[corpus] LOAD BROKEN`** — corpus index is corrupt or from an
+  older schema. Delete the directory and rebuild via
+  `python ../scripts/index_corpus.py build ...`.
+- **Streaming output cuts off** — flaky backend. The engine falls
+  back to batched on the next call; set `ENABLE_STREAM=0` to force
+  batched.
 
 ---
 

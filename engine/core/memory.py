@@ -167,18 +167,32 @@ class MemoryStore:
     # ── record ────────────────────────────────────────────────
 
     def record(self, traj: Trajectory, question_embedding: list[float] | None = None) -> None:
-        """Persist a trajectory; embed the question on demand if not supplied."""
-        vec = question_embedding or self._embed(traj.question)
+        """Persist a trajectory; embed the question on demand if not supplied.
+
+        Embedder failures do not crash the caller — we log + skip the
+        embedding so the trajectory is still persisted (just not
+        retrievable semantically). This is safer than silently dropping
+        the whole trajectory.
+        """
+        try:
+            vec = question_embedding or self._embed(traj.question)
+        except Exception as exc:  # noqa: BLE001
+            import sys
+            print(f"[memory] embedder failed ({type(exc).__name__}); "
+                  f"trajectory stored without embedding: {exc}", file=sys.stderr)
+            vec = []
+
         if self._conn is not None:
             self._conn.execute(
                 "INSERT OR REPLACE INTO trajectories(query_id,timestamp,question,domain,payload) "
                 "VALUES (?,?,?,?,?)",
                 (traj.query_id, traj.timestamp, traj.question, traj.domain, traj.to_json()),
             )
-            self._conn.execute(
-                "INSERT OR REPLACE INTO embeddings(query_id,vec) VALUES (?,?)",
-                (traj.query_id, _pack_embedding(vec)),
-            )
+            if vec:
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO embeddings(query_id,vec) VALUES (?,?)",
+                    (traj.query_id, _pack_embedding(vec)),
+                )
             self._conn.commit()
         else:
             self._session.append((traj, vec))
@@ -199,7 +213,13 @@ class MemoryStore:
         """
         if k <= 0:
             return []
-        q_vec = self._embed(question)
+        try:
+            q_vec = self._embed(question)
+        except Exception as exc:  # noqa: BLE001
+            import sys
+            print(f"[memory] retrieve embedder failed ({type(exc).__name__}); "
+                  f"skipping memory augmentation for this query: {exc}", file=sys.stderr)
+            return []
         candidates: list[tuple[Trajectory, list[float]]] = []
         if self._conn is not None:
             rows = self._conn.execute(
