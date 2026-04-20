@@ -41,6 +41,12 @@ recipes/**/cache/
 models/
 *.gguf
 *.safetensors
+hf_cache/
+.cache/
+
+# Local corpus indexes (built via scripts/index_corpus.py)
+*.idx/
+corpus-*/
 
 # Node (for any future JS tooling)
 node_modules/
