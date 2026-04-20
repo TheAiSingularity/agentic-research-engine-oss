@@ -5,7 +5,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/pypi/v/agentic-research-engine?color=blue&label=pypi" alt="PyPI">
-  <img src="https://img.shields.io/badge/version-0.1.2--alpha-orange.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.1.3--alpha-orange.svg" alt="Version">
   <img src="https://img.shields.io/badge/default-gemma%203%204B%20local-green.svg" alt="Default">
   <img src="https://img.shields.io/badge/tests-229%2F229-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/interfaces-CLI%20%7C%20TUI%20%7C%20web-blue.svg" alt="Interfaces">

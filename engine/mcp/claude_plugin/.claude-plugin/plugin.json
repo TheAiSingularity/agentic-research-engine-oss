@@ -1,7 +1,7 @@
 {
   "name": "agentic-research",
   "displayName": "Agentic Research — local, verified, open-source",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Research agent that verifies its own answers with full source citations, optional local corpus, and zero cloud dependency. Runs on Gemma 3 4B via Ollama or any OpenAI-compatible endpoint. Every LLM call, source, and verification decision is visible. No telemetry.",
   "homepage": "https://github.com/TheAiSingularity/agentic-research-engine-oss",
   "repository": "https://github.com/TheAiSingularity/agentic-research-engine-oss",
@@ -21,8 +21,8 @@
   ],
   "mcpServers": {
     "engine": {
-      "command": "python",
-      "args": ["-m", "engine.mcp.server"],
+      "command": "agentic-research-mcp",
+      "args": [],
       "env": {
         "OPENAI_BASE_URL": "http://localhost:11434/v1",
         "OPENAI_API_KEY": "ollama",

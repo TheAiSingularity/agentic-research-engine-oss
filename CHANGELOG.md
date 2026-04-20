@@ -7,6 +7,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <!-- toc -->
 
 - [Unreleased](#unreleased)
+- [0.1.3 — community directory prep + standalone skill](#013--community-directory-prep--standalone-skill-2026-04-21)
 - [0.1.2 — MCP registry ownership proof](#012--mcp-registry-ownership-proof-2026-04-21)
 - [0.1.1 — packaging + marketplaces](#011--packaging--marketplaces-2026-04-21)
 - [0.1.0 — public alpha](#010--public-alpha-2026-04-21)
@@ -19,6 +20,53 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 Work-in-progress on `main` between releases. Nothing here yet.
+
+---
+
+## [0.1.3] — community directory prep + standalone skill — 2026-04-21
+
+Discovery infrastructure. Makes `agentic-research-engine-oss` indexable
+on the community-run directories that matter for reach.
+
+### Added
+
+- **Standalone prompt-only skill** at `skills/verify-answer/SKILL.md`.
+  Pure Chain-of-Verification in one Markdown file — works in any Claude
+  install, no MCP server, no pip install. Accepts any answer + evidence,
+  returns per-claim verdicts (`VERIFIED` / `UNVERIFIED` / `CONTRADICTED`).
+  Built for listing on `claudeskills.info`; backlinks to the full engine
+  for users who want the automated version.
+- **`docs/submit-community-directories.md`** — step-by-step submission
+  instructions for claudemarketplaces.com, glama.ai/mcp/servers,
+  pulsemcp.com, mcp.so, and claudeskills.info. Each entry notes whether
+  submission is automatic (registry-sync), opportunistic (GitHub crawler),
+  or manual (form / PR), with ready-to-paste copy for each.
+- **`skills/README.md` refresh** — describes the standalone-skill
+  format, install instructions, and contribution rules distinct from
+  the MCP-coupled skills in `engine/mcp/claude_plugin/skills/`.
+
+### Changed
+
+- **Moved `marketplace.json` → `.claude-plugin/marketplace.json`**.
+  The claudemarketplaces.com crawler looks for the file at the
+  spec-compliant `.claude-plugin/` path; ours was at repo root, where
+  the crawler couldn't find it.
+- **Plugin MCP command switched from `python -m engine.mcp.server` to
+  `agentic-research-mcp`** — the console-script entry-point installed
+  by `pip install agentic-research-engine`. Works regardless of the
+  user's `PYTHONPATH` / cwd. More robust across Claude Desktop's various
+  install contexts.
+- **`server.json` `runtimeHint`** updated to match (`agentic-research-mcp`).
+
+### Fixed
+
+- No fixes — no regressions found; all 264 tests still green.
+
+### Install
+
+```bash
+pip install --upgrade agentic-research-engine    # → 0.1.3
+```
 
 ---
 
