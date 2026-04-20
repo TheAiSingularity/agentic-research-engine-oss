@@ -1,0 +1,35 @@
+name: medical
+description: >
+  Medical research. Biases search toward PubMed, Cochrane, FDA, and major
+  medical journals. Stricter verification — unverified claims are more
+  likely to be filtered. The synthesize prompt explicitly refuses
+  prescriptive advice.
+
+searxng_categories:
+  - science
+
+seed_queries:
+  - "site:pubmed.ncbi.nlm.nih.gov"
+  - "site:cochrane.org"
+  - "site:nejm.org"
+  - "site:thelancet.com"
+  - "site:fda.gov"
+  - "site:cdc.gov"
+  - "site:who.int"
+
+rss_feeds: []
+
+synthesize_prompt_extra: |
+  DOMAIN: medical. Extra rules:
+    - Distinguish between findings in animal studies, in vitro, and human
+      clinical trials. Label each explicitly.
+    - Cite trial phase and sample size where available.
+    - Never give prescriptive medical advice. Report what the literature
+      says, not what a reader should do. If the user asks for a
+      recommendation, refer them to a licensed clinician.
+    - Note conflicts of interest if disclosed.
+
+min_verified_ratio: 0.75
+top_k_evidence: 8
+tools_enabled:
+  - pubmed_search

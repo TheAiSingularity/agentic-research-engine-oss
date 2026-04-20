@@ -1,0 +1,24 @@
+name: personal_docs
+description: >
+  Bring-your-own-documents Q&A. Strictly local — answers must come from
+  your LOCAL_CORPUS_PATH corpus, no web search. Users build their corpus
+  via scripts/index_corpus.py and point LOCAL_CORPUS_PATH at the
+  resulting directory before running queries with this preset.
+
+searxng_categories: []
+seed_queries: []
+rss_feeds: []
+
+synthesize_prompt_extra: |
+  DOMAIN: personal_docs. Extra rules:
+    - Every citation MUST be a corpus:// URL. If the evidence pool
+      contains any non-corpus URLs, ignore them — only the user's own
+      documents are authoritative here.
+    - If the corpus doesn't contain a direct answer, say so and suggest
+      which folders or file types are missing.
+    - Never speculate beyond what the user's documents say.
+
+min_verified_ratio: 0.60
+top_k_evidence: 6
+tools_enabled:
+  - corpus_only

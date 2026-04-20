@@ -1,0 +1,15 @@
+name: general
+description: >
+  Default preset. Broad SearXNG meta-search, no specialized prompt deltas,
+  no corpus, no specialist tools. Suitable for any question that doesn't
+  clearly fit a more specialized preset.
+
+searxng_categories: []
+seed_queries: []
+rss_feeds: []
+
+synthesize_prompt_extra: ""
+
+min_verified_ratio: 0.0
+top_k_evidence:
+tools_enabled: []

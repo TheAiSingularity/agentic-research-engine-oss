@@ -1,0 +1,31 @@
+name: papers
+description: >
+  Academic paper research. Biases search toward arXiv, Semantic Scholar,
+  OpenReview, and major CS/ML/physics preprint servers. Answer format
+  favors structured summaries of individual papers' contributions,
+  methods, and results.
+
+searxng_categories:
+  - science
+
+seed_queries:
+  - "site:arxiv.org"
+  - "site:semanticscholar.org"
+  - "site:openreview.net"
+  - "site:biorxiv.org"
+  - "site:papers.cool"
+  - "site:paperswithcode.com"
+
+rss_feeds: []
+
+synthesize_prompt_extra: |
+  DOMAIN: papers. Extra rules:
+    - When multiple papers are cited, give each its own labeled block
+      (Contribution / Method / Results / Limitations).
+    - Include paper identifiers (arXiv ID or DOI) alongside the title.
+    - Note venue + year when visible.
+    - Highlight methodological disagreements between papers explicitly.
+
+min_verified_ratio: 0.70
+top_k_evidence: 10
+tools_enabled: []

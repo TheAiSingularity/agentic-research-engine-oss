@@ -1,0 +1,36 @@
+name: financial
+description: >
+  Financial / company research. Biases search toward SEC filings, major
+  financial press (Reuters, Bloomberg, FT, WSJ), and earnings-related
+  sources. Synthesize prompt requires explicit date stamps because
+  financial facts age quickly.
+
+searxng_categories:
+  - news
+
+seed_queries:
+  - "site:sec.gov"
+  - "site:reuters.com"
+  - "site:bloomberg.com"
+  - "site:ft.com"
+  - "site:wsj.com"
+  - "10-K annual report"
+  - "10-Q quarterly report"
+  - "earnings call transcript"
+
+rss_feeds: []
+
+synthesize_prompt_extra: |
+  DOMAIN: financial. Extra rules:
+    - Every numeric claim (revenue, EPS, growth %, market cap) MUST cite
+      the reporting date and period covered (e.g. "FY2025 Q4 per 10-K
+      filed 2026-02-14").
+    - Distinguish audited financials from analyst estimates and
+      management guidance.
+    - Never make forward-looking predictions; report ranges that others
+      have published and attribute them.
+    - This is research, not investment advice.
+
+min_verified_ratio: 0.80
+top_k_evidence: 8
+tools_enabled: []

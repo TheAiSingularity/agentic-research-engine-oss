@@ -1,0 +1,34 @@
+name: stock_trading
+description: >
+  Stock research (NOT trading execution). Technical indicators + recent
+  news + analyst positioning per ticker. Shares the forbidden-symbols
+  safety rail with the trading-copilot recipe — this preset will NEVER
+  recommend a specific buy/sell action.
+
+searxng_categories:
+  - news
+
+seed_queries:
+  - "earnings guidance"
+  - "analyst price target"
+  - "institutional holdings"
+  - "site:seekingalpha.com"
+
+rss_feeds:
+  - "https://www.reuters.com/markets/companies/rss/"
+  - "https://www.bloomberg.com/feed/rss/business"
+
+synthesize_prompt_extra: |
+  DOMAIN: stock_trading. Extra rules:
+    - This is research ONLY. You must NEVER recommend a specific action
+      (buy / sell / hold / trade / position size).
+    - If the user asks for a recommendation, refuse and redirect:
+      "Providing specific trading recommendations is out of scope. Here
+      is what the research shows."
+    - Summarize recent price action, technical indicators, and news
+      in separate clearly-labeled blocks.
+    - Surface known risks (shorts, insider selling, regulatory).
+
+min_verified_ratio: 0.80
+top_k_evidence: 8
+tools_enabled: []
