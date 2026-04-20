@@ -7,20 +7,21 @@ see [`paper-draft.md`](paper-draft.md).
 
 ---
 
-## Current state (Wave 6 shipped)
+## Current state (through Wave 8)
 
 | | |
 |---|---|
-| Recipes live | **research-assistant** (beginner + production + eval) · **trading-copilot** (beginner + production + eval) |
+| Recipes live | **research-assistant** (beginner + production + eval) · **trading-copilot** (beginner + production + eval) · **document-qa** (beginner) |
 | Case-study recipe | **rust-mcp-search-tool** |
 | Core shared library | `core/rag/` v1 — `HybridRetriever` · `CrossEncoderReranker` · `contextualize_chunks` · `CorpusIndex` |
-| Tests | **143/143 green**, all mocked (no network / no API keys) |
+| Tests | **159/159 green**, all mocked (no network / no API keys) |
 | Portable stack | OpenAI · Ollama · vLLM · SGLang — one env var (`OPENAI_BASE_URL`) |
 | Search | Self-hosted **SearXNG** (Docker) — no paid API |
 | Full-page fetch | **trafilatura** — self-hosted clean-text article extraction |
 | Reranking | **BAAI/bge-reranker-v2-m3** via `sentence-transformers` — Apache-2.0, local |
 | Local corpus | `scripts/index_corpus.py` — PDFs / markdown / text / HTML → `CorpusIndex`; queryable CLI + auto-merged into production pipeline via `LOCAL_CORPUS_PATH` |
 | Small-model hardening | Three-case synthesize prompt (full / partial / refuse) + per-chunk char cap + auto-TopK heuristic for Ollama-class models — eliminates the hallucination failure modes observed on `gemma4:e2b` |
+| Streaming UX | Synthesize tokens stream to stdout live; falls back to batched on backends that don't support streaming |
 | Observability | Per-call trace (node, model, latency, tokens) — no SaaS |
 | Repo visibility | **Public** |
 | License | MIT |
@@ -59,6 +60,27 @@ Second flagship recipe in one session. Beginner + production + eval harness + ba
 - Eval: pandas-only backtest scorer with signal precision/recall, sample_window.yaml (6 months × 3 tickers).
 - Safety: build-time forbidden-symbols tests fail if anyone adds execution semantics (`place_order` / `alpaca` / `ib_insync` / etc.).
 - [DEC-009](../.project/decisions.md) documents techniques we deliberately skipped from research-assistant (HyDE, FLARE, compression, plan refinement, classifier router) because they don't transfer to structured-data monitoring.
+
+### Wave 8 — document-qa recipe (third flagship, corpus-only)
+
+Third flagship recipe, bringing the total to two flagship + one flagship + one Rust case study. Validates that `core.rag` — specifically `CorpusIndex` and `HybridRetriever` — composes cleanly without any of the web-reach machinery that pays off for open-web research.
+
+- 4-node LangGraph: `load_corpus → retrieve → synthesize (streaming) → verify (CoVe)`. Deliberately no router, no iteration, no compressor — on a bounded corpus those don't earn their complexity.
+- Drop documents at `DOCS_DIR` (PDFs / markdown / text / HTML), or point `CORPUS_PATH` at a prebuilt index from `scripts/index_corpus.py`. Everything else is optional env tweaks.
+- Build-time safety rail: AST-based test rejects any appearance of `searxng`, `requests.get`, `trafilatura.fetch_url`, or `webhook` in executable code. The rail walks the AST (not raw text) so documentation mentioning those terms doesn't false-positive.
+- 10 mocked tests covering node contracts (load from dir, load from prebuilt, error when neither set, URL shaping, synthesize with/without hits, verify counts, verify disabled), full-graph integration, and the safety-rail.
+- Live smoke: built a 23-chunk fixture corpus in 1.1 s via Ollama `nomic-embed-text`; answered "what retrieval techniques does the cookbook ship" in 34.8 s with an 8/8-verified structured answer citing `corpus://retrieval.md#c0`/`#c2`/`#c8` plus `corpus://pipeline.md#c7`. Streaming UX worked — tokens arrived live.
+
+Supports the `core/rag` graduation bar from DEC-004: if the library is genuinely reusable, a bring-your-own-documents recipe should be ~200 LOC and reuse everything without duplication. It is (169 LOC main, 175 LOC tests) and it does.
+
+### Wave 7 — streaming synthesis
+
+Single-measure wave focused purely on UX. On a 95-175 s production query, users previously waited in stdout silence. Now they see the answer type out live.
+
+- `_chat_stream()` helper calling OpenAI-compatible `stream=True`, accumulating `delta.content` tokens into a full answer while writing each to a sink (default stdout + flush). Falls back to `_chat()` if the backend rejects streaming. Trace entry shape matches `_chat` plus `streamed: True`.
+- `_synthesize_once` uses streaming when `ENABLE_STREAM=1` and `ENABLE_CONSISTENCY=0`. Self-consistency mode batches — streaming N interleaved candidates would be UX soup.
+- 6 new tests (sink capture, batched fallback on backend error, streamed flag in trace, synthesize uses stream path, synthesize batches when stream off, synthesize batches when consistency on). The `patched` fixture disables streaming by default since its mock returns `SimpleNamespace` not iterables.
+- Live verified against `gemma4:e2b` on Ollama: 173-char answer streamed in 9.52 s; trace entry flagged `streamed=True`.
 
 ### Wave 6 — small-model hardening (anti-hallucination for gemma4:e2b-class inference)
 
@@ -199,7 +221,9 @@ agentic-ai-cookbook-lab/
 
 ## Recent commits (tip-down)
 
-- `(pending)` Wave 6: small-model hardening (anti-hallucination prompt + per-chunk caps + auto-TopK)
+- `(pending)` Wave 8: document-qa recipe (3rd flagship, corpus-only 4-node pipeline)
+- `ace5e2e` Wave 7: streaming synthesis (tokens to stdout as they generate)
+- `563e862` Wave 6: small-model hardening (anti-hallucination + caps + auto-topK)
 - `af0a09b` docs: root README refreshed for Wave 5; defensive gitignore patterns
 - `d8af86a` Wave 5: local corpus indexing (`CorpusIndex` + `scripts/index_corpus.py` + `LOCAL_CORPUS_PATH` integration)
 - `4f27c03` Wave 4: local-first engine enhancements (rerank + fetch_url + trace)

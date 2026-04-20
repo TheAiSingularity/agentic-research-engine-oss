@@ -4,9 +4,9 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/status-wave%205-brightgreen.svg" alt="Status">
-  <img src="https://img.shields.io/badge/recipes-2%20flagship%20%2B%201%20rust-green.svg" alt="Recipes">
-  <img src="https://img.shields.io/badge/tests-135%2F135-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/status-wave%208-brightgreen.svg" alt="Status">
+  <img src="https://img.shields.io/badge/recipes-3%20flagship%20%2B%201%20rust-green.svg" alt="Recipes">
+  <img src="https://img.shields.io/badge/tests-159%2F159-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/languages-python%20%2B%20rust-green.svg" alt="Languages">
 </p>
 
@@ -31,8 +31,9 @@ For the wave-by-wave build log see [`docs/progress.md`](docs/progress.md).
 
 | Recipe | Levels | What it does |
 |---|---|---|
-| [**research-assistant**](recipes/by-use-case/research-assistant/) | `beginner` (100 LOC) · `production` (~485 LOC; Tier 2 + Tier 4 + Wave 4 + Wave 5) · `eval` harness w/ 12-config ablation | Answers hard research questions with cited sources; decomposes → searches → fetches → reranks → compresses → verifies → iterates |
+| [**research-assistant**](recipes/by-use-case/research-assistant/) | `beginner` (100 LOC) · `production` (~520 LOC; Tier 2 + Tier 4 + Waves 4–7) · `eval` harness w/ 12-config ablation | Answers hard research questions with cited sources; decomposes → searches → fetches → reranks → compresses → verifies → iterates. Streams tokens live. |
 | [**trading-copilot**](recipes/by-use-case/trading-copilot/) | `beginner` + `production` + `eval` backtest | Market research + alerts (NOT auto-execution) on a watchlist + rule set. Cheap analyst + escalated skeptic + CoVe-style claim verification. Slack/Telegram/Discord webhooks or stdout. |
+| [**document-qa**](recipes/by-use-case/document-qa/) | `beginner` (~170 LOC) | Bring-your-own-documents Q&A over PDFs / markdown / text / HTML. 4-node pipeline over `CorpusIndex`: hybrid retrieval + streaming synthesis + CoVe verify. No web reach (build-time test enforces). |
 
 Plus one Rust case-study recipe under `by-pattern/`:
 
@@ -40,8 +41,8 @@ Plus one Rust case-study recipe under `by-pattern/`:
 
 ## The research-assistant stack — what's actually shipped
 
-Five waves of techniques, each env-toggleable so leave-one-out ablations
-are trivial. **135/135 unit tests green**, all mocked (no network or API
+Seven waves of techniques, each env-toggleable so leave-one-out ablations
+are trivial. **159/159 unit tests green**, all mocked (no network or API
 key required for `pytest`).
 
 **Tier 1 — retrieval** (lives in `core/rag/`)
@@ -75,6 +76,17 @@ key required for `pytest`).
 
 **Wave 5 — bring your own documents**
 - W5.1 `LOCAL_CORPUS_PATH` — index your own PDFs / markdown / text / HTML via `scripts/index_corpus.py`; each sub-query pulls top-K matches from the local index alongside web results. Citations flow as `corpus://<source>#p<page>#c<chunk>`.
+
+**Wave 6 — small-model hardening**
+- W6.1 Three-case synthesize prompt (full / partial with gap flagging / refuse) — eliminates the off-topic hallucinations we saw on `gemma4:e2b` with large evidence contexts.
+- W6.2 `PER_CHUNK_CHAR_CAP` hard-truncates evidence chunks after compress regardless of compressor quality.
+- W6.3 Auto-TopK heuristic shrinks `TOP_K_EVIDENCE` from 8 → 5 when the synthesizer name matches `:e2b` / `:1-4b` / `nano` (doesn't match `mini` — cloud-hosted "mini" models are capable).
+
+**Wave 7 — streaming UX**
+- W7 `ENABLE_STREAM=1` (default on) — synthesize tokens print to stdout as they arrive. Falls back to batched if the backend rejects `stream=True`.
+
+**Wave 8 — document-qa flagship**
+- Third flagship recipe shipped (beginner). 4-node corpus-only pipeline. Same `core/rag` primitives, no `searxng` / `trafilatura.fetch_url` / `requests.get` reach (build-time AST test enforces).
 
 ## Three ways to run it
 
@@ -151,7 +163,7 @@ foundations/                 # OpenClaw / OpenShell / NemoClaw / Hermes Agent ex
 
 ## Status
 
-- **Waves 0 → 5 all shipped.** Wave 0 skeleton · Wave 0.5 SOTA-per-task pivot · Wave 1 research-assistant beginner · Wave 2 T1-T4 (full SOTA stack + ablation harness) · Wave 3 trading-copilot beginner + production + backtest · Wave 4 local-first engine (rerank wired + trafilatura fetch + observability trace) · Wave 5 local corpus indexing. See [`docs/progress.md`](docs/progress.md).
+- **Waves 0 → 8 all shipped.** Wave 0 skeleton · Wave 0.5 SOTA-per-task pivot · Wave 1 research-assistant beginner · Wave 2 T1-T4 (full SOTA stack + ablation harness) · Wave 3 trading-copilot beginner + production + backtest · Wave 4 local-first engine (rerank wired + trafilatura fetch + observability trace) · Wave 5 local corpus indexing · Wave 6 small-model hardening · Wave 7 streaming synthesis · Wave 8 document-qa third flagship. See [`docs/progress.md`](docs/progress.md).
 - **Pending:** run the 12-config ablation on the GPU VM with SimpleQA-100 + BrowseComp-Plus-50 to produce the paper's numbers.
 
 ## Contributing
