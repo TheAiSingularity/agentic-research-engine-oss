@@ -113,6 +113,10 @@ def patched(monkeypatch):
     monkeypatch.setattr(main, "ENABLE_FETCH", False)
     # W4.3 — keep the trace buffer clean between tests.
     main._TRACE_BUFFER.clear()
+    # W7 — disable streaming by default; the patched chat_router returns
+    # SimpleNamespace responses, not streamable iterators. Dedicated
+    # streaming tests use _streaming_client() to exercise the stream path.
+    monkeypatch.setattr(main, "ENABLE_STREAM", False)
 
     return client
 
@@ -741,6 +745,96 @@ def test_fetch_url_preserves_corpus_text(patched, monkeypatch):
     assert by_url["https://a.example/1"]["fetched"] is True
     assert by_url["corpus://paper.pdf#c0"]["fetched"] is False
     assert by_url["corpus://paper.pdf#c0"]["text"] == "full corpus chunk text"
+
+
+# ── W7 — streaming synthesis ─────────────────────────────────────────
+
+def _streaming_client(tokens: list[str], error: bool = False) -> mock.MagicMock:
+    """Build a MagicMock OpenAI client that returns a fake streaming response."""
+
+    def make_chunk(content: str) -> mock.MagicMock:
+        delta = mock.MagicMock()
+        delta.content = content
+        choice = mock.MagicMock()
+        choice.delta = delta
+        chunk = mock.MagicMock()
+        chunk.choices = [choice]
+        return chunk
+
+    def fake_create(*args, **kwargs):
+        if kwargs.get("stream") is True:
+            if error:
+                raise RuntimeError("backend does not support streaming")
+            return iter([make_chunk(t) for t in tokens])
+        # Batched fallback
+        return _chat_resp("".join(tokens))
+
+    client = mock.MagicMock()
+    client.chat.completions.create.side_effect = fake_create
+    return client
+
+
+def test_chat_stream_writes_tokens_to_sink_and_returns_full_text(patched, monkeypatch):
+    client = _streaming_client(["Hello, ", "world", "!"])
+    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    collected: list[str] = []
+    result = main._chat_stream("test-model", "prompt", sink=collected.append)
+    assert result == "Hello, world!"
+    # Sink got every token plus a terminal newline.
+    assert collected == ["Hello, ", "world", "!", "\n"]
+
+
+def test_chat_stream_falls_back_when_streaming_rejected(patched, monkeypatch):
+    client = _streaming_client(["X", "Y", "Z"], error=True)
+    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    # Fallback uses _chat which hits the same mocked .create() — this time
+    # stream=False goes down the batched path returning the joined text.
+    result = main._chat_stream("m", "p", sink=lambda t: None)
+    assert result == "XYZ"
+
+
+def test_chat_stream_records_trace_entry_with_streamed_flag(patched, monkeypatch):
+    monkeypatch.setattr(main, "ENABLE_TRACE", True)
+    main._TRACE_BUFFER.clear()
+    client = _streaming_client(["alpha", "beta"])
+    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    main._chat_stream("m", "p", sink=lambda t: None)
+    assert len(main._TRACE_BUFFER) == 1
+    entry = main._TRACE_BUFFER[0]
+    assert entry.get("streamed") is True
+    assert entry["response_chars"] == len("alphabeta")
+
+
+def test_synthesize_once_uses_stream_when_enabled(patched, monkeypatch, capsys):
+    monkeypatch.setattr(main, "ENABLE_STREAM", True)
+    monkeypatch.setattr(main, "ENABLE_CONSISTENCY", False)
+    # Route streaming create through our tokenizer; batched path shouldn't be used.
+    client = _streaming_client(["Final ", "answer ", "[1]."])
+    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+
+    state = {"question": "q", "evidence_compressed": [{"url": "u", "text": "ev"}]}
+    answer = main._synthesize_once(state)
+    assert answer == "Final answer [1]."
+    out = capsys.readouterr().out
+    # Live-typing UX: the tokens hit stdout as they arrive.
+    assert "Final answer [1]." in out
+
+
+def test_synthesize_once_batched_when_stream_disabled(patched, monkeypatch):
+    monkeypatch.setattr(main, "ENABLE_STREAM", False)
+    state = {"question": "q", "evidence_compressed": [{"url": "u", "text": "ev"}]}
+    answer = main._synthesize_once(state)
+    # Falls through to the fixture's chat_router → "Final answer [1] with citations [2]."
+    assert "Final answer" in answer
+
+
+def test_synthesize_once_batched_when_consistency_enabled(patched, monkeypatch):
+    # With self-consistency, streaming is skipped to avoid interleaved tokens.
+    monkeypatch.setattr(main, "ENABLE_STREAM", True)
+    monkeypatch.setattr(main, "ENABLE_CONSISTENCY", True)
+    state = {"question": "q", "evidence_compressed": [{"url": "u", "text": "ev"}]}
+    answer = main._synthesize_once(state)
+    assert "Final answer" in answer
 
 
 # ── Full-graph integration ────────────────────────────────────────────

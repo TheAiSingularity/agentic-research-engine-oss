@@ -141,6 +141,13 @@ export ENABLE_TRACE=1           # W4.3 per-call observability, summary printed a
 export LOCAL_CORPUS_PATH=""     # W5.1 set to a directory built by scripts/index_corpus.py
 export LOCAL_CORPUS_TOP_K=5     # per-subquery hits pulled from the local corpus
 
+# Wave 6 toggles (small-model hardening)
+export PER_CHUNK_CHAR_CAP=1200  # W6.2 per-chunk cap after compress
+export SMALL_MODEL_TOPK=5       # W6.3 TOP_K_EVIDENCE when synth model looks small
+
+# Wave 7 toggles (streaming synthesis)
+export ENABLE_STREAM=1          # W7 stream synthesize tokens to stdout as they arrive
+
 make install
 make run Q="your hard multi-hop research question"
 ```

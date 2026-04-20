@@ -84,6 +84,12 @@ Env vars (all defaults shown; most gates are 1=on):
                               MODEL_SYNTHESIZER matches a small-model pattern
                               (`:e2b`, `2B`, `3B`, `nano`). Set TOP_K_EVIDENCE
                               explicitly to override this heuristic.
+
+  # Wave 7 — streaming synthesis (UX: show tokens as they arrive)
+  ENABLE_STREAM          1    W7 — synthesize streams tokens to stdout.
+                              Only the final answer-generation call uses stream
+                              mode; all other calls stay batched. Streaming is a
+                              no-op if the backend doesn't support it.
 """
 
 import os
@@ -159,6 +165,9 @@ ENABLE_TRACE = ENV("ENABLE_TRACE", "1") == "1"  # W4.3
 LOCAL_CORPUS_PATH = ENV("LOCAL_CORPUS_PATH", "")
 LOCAL_CORPUS_TOP_K = int(ENV("LOCAL_CORPUS_TOP_K", "5"))
 
+# Wave 7 — streaming synthesis.
+ENABLE_STREAM = ENV("ENABLE_STREAM", "1") == "1"
+
 _NUMERIC_RE = re.compile(r"\b\d[\d,\.]*\b|\bhow many\b|\bwhen (was|did)\b|\bwhich year\b", re.IGNORECASE)
 _CITE_RE = re.compile(r"\[(\d+)\]")
 # FLARE: hedges that signal low-confidence claims worth re-searching.
@@ -226,6 +235,63 @@ def _chat(model: str, prompt: str, temperature: float = 0.0) -> str:
             "prompt_chars": len(prompt),
             "response_chars": len(content),
             "tokens_est": (len(prompt) + len(content)) // 4,
+        })
+    return content
+
+
+def _chat_stream(model: str, prompt: str, temperature: float = 0.0, sink=None) -> str:
+    """W7 — stream tokens to `sink` (defaults to stdout) while accumulating.
+
+    Returns the full accumulated text when the stream completes. Falls back
+    to a batched call if the backend rejects `stream=True` — some OpenAI-
+    compatible servers don't implement streaming. Trace entry records the
+    same shape as `_chat` so the CLI summary treats them identically.
+
+    `sink` takes a single token string at a time. Default: sys.stdout.write
+    + flush, which gives the live-typing UX.
+    """
+    if sink is None:
+        def sink(tok: str) -> None:
+            sys.stdout.write(tok)
+            sys.stdout.flush()
+
+    t0 = time.monotonic()
+    try:
+        stream = _llm().chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            stream=True,
+        )
+    except Exception:
+        # Backend doesn't support streaming — fall back to batched.
+        return _chat(model, prompt, temperature)
+
+    pieces: list[str] = []
+    try:
+        for chunk in stream:
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            tok = (getattr(delta, "content", None) or "") if delta else ""
+            if tok:
+                pieces.append(tok)
+                sink(tok)
+    except Exception:
+        # Mid-stream failure — return whatever we got so the pipeline continues.
+        pass
+    sink("\n")  # terminal newline after the stream
+
+    content = "".join(pieces)
+    if ENABLE_TRACE:
+        _TRACE_BUFFER.append({
+            "model": model,
+            "latency_s": round(time.monotonic() - t0, 3),
+            "prompt_chars": len(prompt),
+            "response_chars": len(content),
+            "tokens_est": (len(prompt) + len(content)) // 4,
+            "streamed": True,
         })
     return content
 
@@ -624,6 +690,11 @@ def _synthesize_once(state: State) -> str:
         f"the actual question.\n\n"
         f"Question: {state['question']}\n\nEvidence:\n{bullets}"
     )
+    # W7 — stream tokens if enabled. Self-consistency mode batches to keep
+    # the "N candidates printed at once" UX sensible; streaming one
+    # candidate at a time would interleave confusingly.
+    if ENABLE_STREAM and not ENABLE_CONSISTENCY:
+        return _chat_stream(MODEL_SYNTHESIZER, prompt)
     return _chat(MODEL_SYNTHESIZER, prompt)
 
 
