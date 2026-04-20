@@ -24,11 +24,10 @@ sys.path.insert(0, str(REPO_ROOT))
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
 
-import importlib.util  # noqa: E402
-
-_spec = importlib.util.spec_from_file_location("production_main", Path(__file__).parent / "main.py")
-main = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(main)
+# Phase 1 of the master plan moved the pipeline into engine.core.
+# Tests bind `main` to the pipeline module directly so that monkey-patching
+# `main.X` affects the same namespace the pipeline itself resolves against.
+import engine.core.pipeline as main  # noqa: E402
 
 
 def _chat_resp(text: str) -> object:
@@ -73,7 +72,10 @@ def patched(monkeypatch):
 
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = chat_router
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    # Phase-1 refactor: OpenAI is instantiated inside engine.core.models._llm().
+    # Patch there so pipeline's chat calls land on our mocked client.
+    import engine.core.models as _models_mod
+    monkeypatch.setattr(_models_mod, "OpenAI", mock.MagicMock(return_value=client))
 
     call_i = {"n": 0}
 
@@ -230,7 +232,7 @@ def test_critic_parses_redo_verdict(patched, monkeypatch):
 
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = redo_router
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
     accept, fb = main._critic("plan", "fuzzy", "ctx")
     assert accept is False
     assert "too vague" in fb
@@ -286,7 +288,7 @@ def test_classify_handles_garbled_label(patched, monkeypatch):
 
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = garbage_router
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
     result = main._classify({"question": "q"})
     assert result["question_class"] == "multihop"
 
@@ -483,7 +485,10 @@ def test_chat_appends_trace_entry_when_enabled(patched, monkeypatch):
 
 
 def test_chat_skips_trace_when_disabled(patched, monkeypatch):
-    monkeypatch.setattr(main, "ENABLE_TRACE", False)
+    # _chat lives in engine.core.models and consults engine.core.trace.ENABLE_TRACE
+    # directly via its `_trace` module import — patch at the source.
+    import engine.core.trace as _trace_mod
+    monkeypatch.setattr(_trace_mod, "ENABLE_TRACE", False)
     main._TRACE_BUFFER.clear()
     _ = main._chat("test-model", "hi")
     assert main._TRACE_BUFFER == []
@@ -578,7 +583,7 @@ def test_compress_applies_per_chunk_cap_after_compression(patched, monkeypatch):
 
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = long_compressor
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
 
     state = {"question": "q", "evidence": [
         {"url": "u1", "text": "orig1"},
@@ -611,7 +616,7 @@ def test_synthesize_prompt_includes_anti_hallucination_clause(patched, monkeypat
 
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = capture
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
 
     state = {"question": "q", "evidence_compressed": [{"url": "u", "text": "ev"}]}
     main._synthesize_once(state)
@@ -776,7 +781,7 @@ def _streaming_client(tokens: list[str], error: bool = False) -> mock.MagicMock:
 
 def test_chat_stream_writes_tokens_to_sink_and_returns_full_text(patched, monkeypatch):
     client = _streaming_client(["Hello, ", "world", "!"])
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
     collected: list[str] = []
     result = main._chat_stream("test-model", "prompt", sink=collected.append)
     assert result == "Hello, world!"
@@ -786,7 +791,7 @@ def test_chat_stream_writes_tokens_to_sink_and_returns_full_text(patched, monkey
 
 def test_chat_stream_falls_back_when_streaming_rejected(patched, monkeypatch):
     client = _streaming_client(["X", "Y", "Z"], error=True)
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
     # Fallback uses _chat which hits the same mocked .create() — this time
     # stream=False goes down the batched path returning the joined text.
     result = main._chat_stream("m", "p", sink=lambda t: None)
@@ -797,7 +802,7 @@ def test_chat_stream_records_trace_entry_with_streamed_flag(patched, monkeypatch
     monkeypatch.setattr(main, "ENABLE_TRACE", True)
     main._TRACE_BUFFER.clear()
     client = _streaming_client(["alpha", "beta"])
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
     main._chat_stream("m", "p", sink=lambda t: None)
     assert len(main._TRACE_BUFFER) == 1
     entry = main._TRACE_BUFFER[0]
@@ -810,7 +815,7 @@ def test_synthesize_once_uses_stream_when_enabled(patched, monkeypatch, capsys):
     monkeypatch.setattr(main, "ENABLE_CONSISTENCY", False)
     # Route streaming create through our tokenizer; batched path shouldn't be used.
     client = _streaming_client(["Final ", "answer ", "[1]."])
-    monkeypatch.setattr(main, "OpenAI", mock.MagicMock(return_value=client))
+    monkeypatch.setattr(__import__("engine.core.models", fromlist=["OpenAI"]), "OpenAI", mock.MagicMock(return_value=client))
 
     state = {"question": "q", "evidence_compressed": [{"url": "u", "text": "ev"}]}
     answer = main._synthesize_once(state)
