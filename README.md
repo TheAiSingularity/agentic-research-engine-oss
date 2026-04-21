@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/pypi/v/agentic-research-engine?color=blue&label=pypi" alt="PyPI">
   <img src="https://img.shields.io/badge/version-0.1.3--alpha-orange.svg" alt="Version">
   <img src="https://img.shields.io/badge/default-gemma%203%204B%20local-green.svg" alt="Default">
-  <img src="https://img.shields.io/badge/tests-229%2F229-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-137%2F137-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/interfaces-CLI%20%7C%20TUI%20%7C%20web-blue.svg" alt="Interfaces">
   <img src="https://img.shields.io/badge/MCP-python%20server%20%2B%20claude%20plugin-6aa3ff.svg" alt="MCP">
 </p>
@@ -58,7 +58,7 @@ Groq, vLLM, SGLang, or Together via a single env var.
 - **6 domain presets** — `general`, `medical`, `papers`, `financial`, `stock_trading`, `personal_docs`
 - **Plugin loader** — install Claude plugins or Hermes `agentskills.io` skills from GitHub or local paths
 - **Memory, opt-in** — local SQLite trajectory log with semantic retrieval; wipe anytime
-- **228+ mocked tests green**, all zero-network
+- **137 mocked tests green**, all zero-network (core/rag + engine/tests)
 - **MIT** end-to-end
 
 ---
@@ -72,7 +72,7 @@ Groq, vLLM, SGLang, or Together via a single env var.
 | **Khoj** | stronger research-specific reasoning (we're not personal-knowledge-focused), six domain presets, and an MCP server for other agents to call |
 | **gpt-researcher** | newer pipeline architecture, better small-model handling, observable trace, plugin ecosystem |
 | **MiroThinker-H1 / OpenResearcher-30B** | they're stronger on BrowseComp; we run on a laptop with no GPU and cost $0 |
-| **Writing your own LangGraph research agent** | save 2-3 months; reuse our 8-node pipeline + 30+ tested env gates + 229 tests |
+| **Writing your own LangGraph research agent** | save 2-3 months; reuse our 8-node pipeline + 30+ tested env gates + 137 tests |
 
 **Honest read:** on complex multi-hop reasoning benchmarks, Gemma 3 4B
 sits 15–25% below 30 B+ open models. We don't claim to beat GPT-5.4
