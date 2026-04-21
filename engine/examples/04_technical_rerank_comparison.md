@@ -16,7 +16,7 @@ make cli Q="How does using a cross-encoder reranker (like BAAI/bge-reranker-v2-m
 
 ## What the pipeline does on hard multi-concept questions
 
-This question has been through three live runs during the engine's development (see `docs/progress.md` Wave 6 / Wave 8):
+This question has been through three live runs during the engine's development:
 
 | run | config | answer quality |
 |---|---|---|

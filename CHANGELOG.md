@@ -36,7 +36,7 @@ on the community-run directories that matter for reach.
   returns per-claim verdicts (`VERIFIED` / `UNVERIFIED` / `CONTRADICTED`).
   Built for listing on `claudeskills.info`; backlinks to the full engine
   for users who want the automated version.
-- **`docs/submit-community-directories.md`** — step-by-step submission
+- **`ops/submit-community-directories.md`** — step-by-step submission
   instructions for claudemarketplaces.com, glama.ai/mcp/servers,
   pulsemcp.com, mcp.so, and claudeskills.info. Each entry notes whether
   submission is automatic (registry-sync), opportunistic (GitHub crawler),
@@ -126,10 +126,10 @@ user-facing features; naming consistency fix and install UX.
 - **`marketplace.json`** at repo root — Anthropic Claude plugin
   marketplace discovery manifest. Single plugin entry pointing at
   `engine/mcp/claude_plugin/`.
-- **`docs/submit-claude-plugin.md`** — step-by-step submission guide
+- **`ops/submit-claude-plugin.md`** — step-by-step submission guide
   including slash-command smoke test, community-aggregator listings,
   rollback notes.
-- **`docs/submit-mcp-registry.md`** — step-by-step PyPI upload +
+- **`ops/submit-mcp-registry.md`** — step-by-step PyPI upload +
   `mcp-publisher` flow including pitfalls and version-bump playbook.
 
 ### Changed
@@ -165,7 +165,7 @@ cd agentic-research-engine-oss/engine && make install
 | PyPI (`agentic-research-engine`) | artifacts built + smoke-tested in fresh venv; awaiting `twine upload` |
 | MCP registry (`io.github.TheAiSingularity/agentic-research`) | `server.json` ready; submit via `mcp-publisher publish` |
 | Anthropic Claude marketplace | `marketplace.json` at repo root; `/plugin marketplace add <repo-url>` installs |
-| claudemarketplaces.com (community) | follow-up PR per [`docs/submit-claude-plugin.md`](docs/submit-claude-plugin.md) |
+| claudemarketplaces.com (community) | follow-up PR per [`ops/submit-claude-plugin.md`](ops/submit-claude-plugin.md) |
 | mcp.so (community) | picks up automatically from the MCP registry once published |
 
 ---
@@ -326,7 +326,8 @@ same day to match the engine-centric positioning.
 
 The Engine Master Plan (Phases 0–8) followed eight "waves" of feature
 work while the repo was still branded as `agentic-research-engine-oss`.
-Brief summary; full per-wave prose in [`docs/progress.md`](docs/progress.md).
+Brief summary; per-wave prose is tracked in the maintainer journal
+(not checked in).
 
 ### Wave 8 — `document-qa` recipe (third flagship, corpus-only pipeline)
 Shipped a 4-node corpus-only research recipe as a standalone example of

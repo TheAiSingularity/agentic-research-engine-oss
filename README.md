@@ -554,7 +554,7 @@ template — include `ollama list`, `engine version`, and the error.
   [`CHANGELOG.md`](CHANGELOG.md).
 - **0.2** — specialist tool wiring (`tools_enabled` field in presets finally activates), first LoRA run if GPU arrives, plugin catalog in `docs/`.
 - **0.3** — team-collab features (shared memory, PR-driven domain presets), desktop app packaging via Tauri.
-- **0.4+** — per [`docs/progress.md`](docs/progress.md) "Open work" section.
+- **0.4+** — open-work tracked in [GitHub Issues](https://github.com/TheAiSingularity/agentic-research-engine-oss/issues).
 
 ---
 

@@ -155,7 +155,6 @@ composition can substitute for specialized training* — the paper's thesis.
 | Self-hosted search | `scripts/searxng/docker-compose.yml` |
 | Ablation runner | `recipes/by-use-case/research-assistant/eval/ablation.py` |
 | Pareto plot | `recipes/by-use-case/research-assistant/eval/pareto.py` |
-| Paper draft | `docs/paper-draft.md` |
 | Mac setup | `scripts/setup-local-mac.sh` |
 | GPU VM setup | `scripts/setup-vm-gpu.sh` |
 | Rust MCP case study | `recipes/by-pattern/rust-mcp-search-tool/` |

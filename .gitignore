@@ -52,3 +52,7 @@ corpus-*/
 node_modules/
 /dist/
 /build/
+
+# Maintainer-local notes — launch copy, internal dev logs, draft paper.
+# Preserved on-disk under .local/ but never pushed.
+.local/

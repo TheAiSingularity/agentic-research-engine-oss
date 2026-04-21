@@ -16,8 +16,7 @@ Design notes:
   - Output is streamed to results.jsonl, one JSON object per (config, question,
     seed) triple. Resumable: existing entries are skipped on re-run.
   - MiroThinker-1.7 baseline can be added as an external config that invokes
-    its own inference script; we treat it as a black-box numbers source
-    (see docs/paper-draft.md for methodology).
+    its own inference script; we treat it as a black-box numbers source.
 
 Requires OPENAI_API_KEY for the judge. The agent backend is whatever the
 current env selects (OpenAI, Ollama, vLLM, SGLang).
