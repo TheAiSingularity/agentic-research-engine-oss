@@ -83,7 +83,7 @@ research agent in April 2026.
 
 ## Quickstart — Mac local
 
-### Option A — PyPI (fastest, once v0.1.1 is published)
+### Option A — PyPI (fastest)
 
 ```bash
 # 1) Local inference (Ollama + Gemma 3 4B + embedding model — 3.6 GB combined)
@@ -118,6 +118,36 @@ make smoke    # end-to-end run on the canonical "what is contextual retrieval" q
 
 Expected wall-clock on an M-series Mac: **~45 s** for a factoid,
 ~90 s for multi-hop synthesis. Zero dollars per query.
+
+### Higher factoid accuracy — route one node to a cloud model
+
+Gemma 3 4B is surprisingly good at **structure** (plan, route, verify,
+compress) but confabulates **specific factoids** when SearXNG doesn't
+surface a source containing the right token. Live SimpleQA-mini run on
+2026-04-21 (see [`engine/benchmarks/RESULTS.md`](engine/benchmarks/RESULTS.md))
+showed `gemma3:4b` emitting "2023" for *"year Anthropic published
+Contextual Retrieval"* (gold: 2024) and "LayoutLMv3" for *"which
+cross-encoder for reranking"* (gold: bge-reranker-v2-m3).
+
+If you care about factoid accuracy more than $0/query, route **only
+the synthesizer** to a cloud model and keep everything else local:
+
+```bash
+# keep Gemma 3 4B for planning / verification / compression / routing
+export MODEL_PLANNER=gemma3:4b
+# route only the final synthesis to a frontier model
+unset OPENAI_BASE_URL                      # go back to cloud OpenAI
+export OPENAI_API_KEY=sk-...
+export MODEL_SYNTHESIZER=gpt-5-mini        # or gpt-5, claude-sonnet-4-5, etc.
+```
+
+Cost is dominated by synthesizer tokens (~5–15 k per query). `gpt-5-mini`
+runs roughly **$0.01–0.03 per research query**. You keep the local
+planner/verifier/compressor loop and the $0 search/retrieval side of
+the pipeline; you only pay for the one call that produces the final
+answer. Works with any OpenAI-compatible endpoint — Groq, Together,
+Mistral, DeepSeek, local vLLM — so you can pick a cheap fast model
+(`llama-3.3-70b` on Groq ≈ $0.001/query) without giving up the rest.
 
 ---
 
@@ -410,7 +440,7 @@ Full list in `engine/core/pipeline.py` header. Most-common knobs:
 |---|---|---|
 | `OPENAI_BASE_URL` | unset (cloud OpenAI) | route to Ollama / vLLM / Groq / etc. |
 | `OPENAI_API_KEY` | `ollama` | sentinel for local; real key for cloud |
-| `MODEL_SYNTHESIZER` | `gpt-5-mini` | drives small-model heuristic |
+| `MODEL_SYNTHESIZER` | `gpt-5-mini` (cloud) or `gemma3:4b` (Mac-local path) | final-answer model. Swap to `gpt-5`, `claude-sonnet-4-5`, `llama-3.3-70b` on Groq, etc., for higher factoid accuracy while keeping the rest of the pipeline local. |
 | `TOP_K_EVIDENCE` | auto (5 for small, 8 for large models) | retrieval budget |
 | `ENABLE_RERANK` | `0` | opt-in; first run downloads bge-reranker-v2-m3 (~560 MB) |
 | `ENABLE_FETCH` | `1` | trafilatura full-page fetch |
@@ -467,6 +497,23 @@ template — include `ollama list`, `engine version`, and the error.
 
 - **Gemma 4B ≠ GPT-5.4 Pro.** 15–25 % below 30 B+ open models on hard
   multi-hop. We position as "best $0 local", not "SOTA."
+- **Gemma 3 4B confabulates specific factoids** when SearXNG doesn't
+  return a source that contains the right token. Measured on
+  SimpleQA-mini: 0/20 strict pass rate (see
+  [`engine/benchmarks/RESULTS.md`](engine/benchmarks/RESULTS.md) —
+  `verified_ratio` 85.5 %, zero `must_not_contain` hits; the model
+  isn't emitting *banned* strings, it's picking wrong ones). Mitigations:
+  (a) route only the synthesizer to a cloud model (see "Higher factoid
+  accuracy" above — `$0.01–0.03/query` with `gpt-5-mini`), (b) give
+  the engine a `LOCAL_CORPUS_PATH` so your own docs become retrieval
+  targets, (c) set `ENABLE_RERANK=1` to bias retrieval toward the
+  right sources.
+- **CoVe confirms internal consistency, not ground truth.** Every
+  synthesized claim is checked against retrieved evidence; claims
+  don't get verified *by the world*. If retrieval misses, CoVe will
+  still happily verify a confidently-wrong answer. The engine will
+  never fabricate citations, but it can confidently repeat wrong
+  information that was in its evidence pool.
 - **No LoRA fine-tuning in v1.** Trajectory data is collected; actual
   model training deferred until GPU access + data volume.
 - **No hosted SaaS.** Local-first is the entire v1 positioning.
@@ -479,7 +526,9 @@ template — include `ollama list`, `engine version`, and the error.
 
 ## Status + roadmap
 
-- **0.1.0 — public alpha** (current). Features listed above. See [`CHANGELOG.md`](CHANGELOG.md).
+- **0.1.3 — public alpha** (current). Features listed above; on PyPI +
+  the official MCP registry + the Anthropic plugin marketplace. See
+  [`CHANGELOG.md`](CHANGELOG.md).
 - **0.2** — specialist tool wiring (`tools_enabled` field in presets finally activates), first LoRA run if GPU arrives, plugin catalog in `docs/`.
 - **0.3** — team-collab features (shared memory, PR-driven domain presets), desktop app packaging via Tauri.
 - **0.4+** — per [`docs/progress.md`](docs/progress.md) "Open work" section.
